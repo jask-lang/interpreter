@@ -56,17 +56,35 @@ static void RunInteractiveMode()
 
     var interpreter = new Interpreter();
     List<string> history = new List<string>();
+    
+    StringBuilder multiLineBuffer = new StringBuilder();
+
+    var blockPairs = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        { "endif", "if" },
+        { "endwhile", "while" },
+        { "endstruct", "struct"},
+        { "endfor", "for"},
+        { "end", "function" }
+    };
+
+    string[] allKeywords = blockPairs.Values.Concat(blockPairs.Keys).ToArray();
+    Stack<string> openBlocks = new Stack<string>();
 
     while (true)
     {
-        Console.Write(">>> ");
+        int indentationLevel = openBlocks.Count;
+
+        if (indentationLevel > 0)
+        {
+            Console.Write("... " + new string(' ', indentationLevel * 4));
+        }
+        else
+        {
+            Console.Write(">>> ");
+        }
 
         string line = ReadLine(history);
-
-        if (string.IsNullOrWhiteSpace(line))
-        {
-            continue;
-        }
 
         if (line.Trim() == "exit")
         {
@@ -74,13 +92,115 @@ static void RunInteractiveMode()
         }
 
         // add line to history only if it's not the same as the last command
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            continue;
+        }
+
         if (history.Count == 0 || history[history.Count - 1] != line)
         {
             history.Add(line);
         }
 
-        Run(interpreter, true, line);
+        var keywordsInLine = FindKeywordsInOrderOutsideQuotes(line, allKeywords);
+
+        foreach (var token in keywordsInLine)
+        {
+            if (blockPairs.TryGetValue(token, out string? expectedOpener))
+            {
+                if (openBlocks.Count > 0 && openBlocks.Peek() == expectedOpener)
+                {
+                    openBlocks.Pop();
+                }
+            }
+            else
+            {
+                openBlocks.Push(token);
+            }
+        }
+
+        if (multiLineBuffer.Length > 0)
+        {
+            multiLineBuffer.AppendLine();
+        }
+
+        multiLineBuffer.Append(line);
+
+        // execute all nested blocks after the most outer block has closed
+        if (openBlocks.Count == 0)
+        {
+            Run(interpreter, true, multiLineBuffer.ToString());
+            multiLineBuffer.Clear();
+        }
     }
+}
+
+static List<string> FindKeywordsInOrderOutsideQuotes(string text, string[] keywords)
+{
+    var foundKeywords = new List<string>();
+
+    if (string.IsNullOrEmpty(text) || keywords.Length == 0)
+    {
+        return foundKeywords;
+    }
+
+    ReadOnlySpan<char> span = text.AsSpan();
+    bool inQuotes = false;
+
+    for (int i = 0; i < span.Length; i++)
+    {
+        char c = span[i];
+
+        if (c == '"')
+        {
+            if (i > 0 && span[i - 1] == '\\')
+            {
+                continue; // Maskiertes Anführungszeichen wird übersprungen
+            }
+            inQuotes = !inQuotes;
+            continue;
+        }
+
+        if (!inQuotes)
+        {
+            foreach (var keyword in keywords)
+            {
+                ReadOnlySpan<char> target = keyword.AsSpan();
+
+                if (i + target.Length <= span.Length)
+                {
+                    var slice = span.Slice(i, target.Length);
+                    if (slice.SequenceEqual(target))
+                    {
+                        if (IsWholeWord(span, i, target.Length))
+                        {
+                            foundKeywords.Add(keyword);
+                            i += target.Length - 1; // skip keyword in loop
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return foundKeywords;
+}
+
+static bool IsWholeWord(ReadOnlySpan<char> span, int index, int length)
+{
+    if (index > 0 && char.IsLetterOrDigit(span[index - 1]))
+    {
+        return false;
+    }
+
+    int nextIndex = index + length;
+    if (nextIndex < span.Length && char.IsLetterOrDigit(span[nextIndex]))
+    {
+        return false;
+    }
+
+    return true;
 }
 
 static string ReadLine(List<string> history)
