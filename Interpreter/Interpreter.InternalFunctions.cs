@@ -34,7 +34,8 @@ public partial class Interpreter
         initInternalFunctionsList();
 
         // IO functions
-        _internalFunctions["readInput"] = CallInternalFunctionReadInput; 
+        _internalFunctions["readInput"] = CallInternalFunctionReadInput;
+        _internalFunctions["readFile"]  = CallInternalFunctionReadFile;
     }
 
     private Token GetCallToken(Expression.Call call) => ((Expression.Variable)call.Callee).Name;
@@ -186,6 +187,35 @@ public partial class Interpreter
         }
 
         return Console.ReadLine();
+    }
+
+    private object? CallInternalFunctionReadFile(Expression.Call call)
+    {
+        if (call.Arguments.Count > 1)
+        {
+            throw new LangException($"Function 'readFile' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call).Line, _filePath);
+        }
+
+        object? pathArg = Evaluate(call.Arguments[0]);
+        if (pathArg is not string path)
+        {
+            throw new LangException($"Function 'readFile' expects a string argument, but got '{GetValueType(pathArg)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        if (File.Exists(path) == false)
+        {
+            throw new LangException($"File at path '{path}' cannot be found", GetCallToken(call).Line, _filePath);
+        }
+
+        try
+        {
+            string content = File.ReadAllText(path);
+            return content;
+        }
+        catch
+        {
+            throw new LangException($"Reading file at '{path}' failed", GetCallToken(call).Line, _filePath);
+        }
     }
 
     private object? CallInternalFunctionExit(Expression.Call call)
