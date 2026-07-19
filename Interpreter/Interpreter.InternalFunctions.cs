@@ -1,0 +1,276 @@
+namespace JaskLang;
+
+public partial class Interpreter
+{
+    public delegate object? InternalFunctionDelegate(Expression.Call call);
+
+    // dictionary for internal functions: name -> delegate
+    private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = [];
+
+    private void initInternalFunctions()
+    {
+        // standard functions
+        _internalFunctions["print"]       = CallInternalFunctionPrint;
+        _internalFunctions["type"]        = CallInternalFunctionType;
+        _internalFunctions["clock"]       = CallInternalFunctionClock;
+        _internalFunctions["exit"]        = CallInternalFunctionExit;
+        _internalFunctions["assert"]      = CallInternalFunctionAssert;
+        _internalFunctions["sleepFor"]    = CallInternalFunctionSleepFor;
+
+        // variable convertions
+        _internalFunctions["toNumber"]    = CallInternalFunctionToNumber;
+        _internalFunctions["toString"]    = CallInternalFunctionToString;
+
+        // math functions
+        _internalFunctions["round"]       = CallInternalFunctionRound;
+        _internalFunctions["floor"]       = CallInternalFunctionFloor;
+        _internalFunctions["ceil"]        = CallInternalFunctionCeil;
+
+        // string functions
+        _internalFunctions["stringGetIndexOf"]   = CallInternalFunctionStringGetIndexOf;
+        _internalFunctions["stringGetSubstring"] = CallInternalFunctionStringGetSubstring;
+
+        // list functions
+        initInternalFunctionsList();
+
+        // IO functions
+        _internalFunctions["readInput"] = CallInternalFunctionReadInput; 
+    }
+
+    private Token GetCallToken(Expression.Call call) => ((Expression.Variable)call.Callee).Name;
+    
+    private void CheckNumberOfArguments(Expression.Call call, int expected, string funcName)
+    {
+        if (call.Arguments.Count != expected)
+        {
+            throw new LangException($"Function '{funcName}' expects {expected} argument(s), but got {call.Arguments.Count}", GetCallToken(call).Line, _filePath);
+        }
+    }
+
+    private object? CallInternalFunctionPrint(Expression.Call call)
+    {
+        // check number of arguments (print accepts at least 1)
+        CheckNumberOfArguments(call, call.Arguments.Count, "print");
+
+        // print all arguments
+        var parts = new List<string>();
+        foreach (var arg in call.Arguments)
+        {
+            parts.Add(Stringify(Evaluate(arg)));
+        }
+
+        Console.Write(string.Join("", parts));
+
+        return null;
+    }
+
+    private object? CallInternalFunctionType(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "type");
+        
+        object? value = Evaluate(call.Arguments[0]);
+
+        return GetValueType(value);
+    }
+
+    private object? CallInternalFunctionRound(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "round");
+
+        object? number = Evaluate(call.Arguments[0]);
+        if (number is not double d)
+        {
+            throw new LangException($"Function 'round' expects a number argument, but got '{GetValueType(number)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? digits = Evaluate(call.Arguments[1]);
+        if (digits is not double digitsDouble)
+        {
+            throw new LangException($"Function 'round' expects a number argument for digits, but got '{GetValueType(digits)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return Math.Round(d, (int)digitsDouble);
+    }
+
+    private object? CallInternalFunctionFloor(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "floor");
+
+        object? number = Evaluate(call.Arguments[0]);
+        if (number is not double d)
+        {
+            throw new LangException($"Function 'floor' expects a number argument, but got '{GetValueType(number)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return Math.Floor(d);
+    }
+
+    private object? CallInternalFunctionCeil(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "ceil");
+
+        object? number = Evaluate(call.Arguments[0]);
+        if (number is not double d)
+        {
+            throw new LangException($"Function 'ceil' expects a number argument, but got '{GetValueType(number)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return Math.Ceiling(d);
+    }
+
+    private object? CallInternalFunctionStringGetIndexOf(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "stringGetIndexOf");
+
+        object? strValue = Evaluate(call.Arguments[0]);
+        if (strValue is not string str)
+        {
+            throw new LangException($"Function 'stringGetIndexOf' expects a string argument, but got '{GetValueType(strValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? searchValue = Evaluate(call.Arguments[1]);
+        if (searchValue is not string search)
+        {
+            throw new LangException($"Function 'stringGetIndexOf' expects a string argument for search, but got '{GetValueType(searchValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return (double)str.IndexOf(search);
+    }
+
+    private object? CallInternalFunctionStringGetSubstring(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 3, "stringGetSubstring");
+
+        object? strValue = Evaluate(call.Arguments[0]);
+        if (strValue is not string str)
+        {
+            throw new LangException($"Function 'stringGetSubstring' expects a string argument, but got '{GetValueType(strValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? startIndexValue = Evaluate(call.Arguments[1]);
+        if (startIndexValue is not double startIndexDouble)
+        {
+            throw new LangException($"Function 'stringGetSubstring' expects a number argument for start index, but got '{GetValueType(startIndexValue)}'", GetCallToken(call).Line, _filePath);
+        }
+        int startIndex = (int)startIndexDouble;
+
+        object? lengthValue = Evaluate(call.Arguments[2]);
+        if (lengthValue is not double lengthDouble)
+        {
+            throw new LangException($"Function 'stringGetSubstring' expects a number argument for length, but got '{GetValueType(lengthValue)}'", GetCallToken(call).Line, _filePath);
+        }
+        int length = (int)lengthDouble;
+
+        return str.Substring(startIndex, length);
+    }
+
+    private object? CallInternalFunctionClock(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 0, "clock");
+
+        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+    }
+
+    private object? CallInternalFunctionReadInput(Expression.Call call)
+    {
+        if (call.Arguments.Count > 1)
+        {
+            throw new LangException($"Function 'readInput' expects 0 or 1 argument, but got {call.Arguments.Count}", GetCallToken(call).Line, _filePath);
+        }
+
+        // if there's one argument, print it as a prompt
+        if (call.Arguments.Count == 1)
+        {
+            object? promptValue = Evaluate(call.Arguments[0]);
+            Console.Write(Stringify(promptValue));
+        }
+
+        return Console.ReadLine();
+    }
+
+    private object? CallInternalFunctionExit(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "exit");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not double d)
+        {
+            throw new LangException($"Function 'exit' expects an integer argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        Environment.Exit((int)d);
+
+        // this line will never be reached
+        return null;
+    }
+
+    private object? CallInternalFunctionAssert(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "assert");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not bool b)
+        {
+            throw new LangException($"Function 'assert' expects a condition, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        if (b == false)
+        {
+            throw new LangException($"Assertion failed", GetCallToken(call).Line, _filePath);
+        }
+
+        return null;
+    }
+
+    private object? CallInternalFunctionSleepFor(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "sleepFor");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not double d)
+        {
+            throw new LangException($"Function 'sleepFor' expects a number argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        int milliseconds = (int)(d * 1000);
+        Thread.Sleep(milliseconds);
+
+        return null;
+    }
+
+    private object? CallInternalFunctionToNumber(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "toNumber");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+
+        if (argValue is double d)
+        {
+            return d;
+        }
+        else if (argValue is string s)
+        {
+            if (double.TryParse(s, out double parsed))
+            {
+                return parsed;
+            }
+            else
+            {
+                throw new LangException($"Function 'toNumber' could not convert string '{s}' to a number", GetCallToken(call).Line, _filePath);
+            }
+        }
+        else
+        {
+            throw new LangException($"Function 'toNumber' expects a number or string argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
+        }
+    }
+
+    private object? CallInternalFunctionToString(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "toString");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+
+        return Stringify(argValue);
+    }
+}
