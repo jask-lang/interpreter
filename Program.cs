@@ -41,10 +41,12 @@ static void Run(Interpreter interpreter, bool isInteractiveMode, string source, 
     }
     catch (LangException ex)
     {
+        EnsureNewLineBeforeError();
         Console.Error.WriteLine($"\x1b[31mError: \x1b[0m{ex.Message}");
     }
     catch (Exception ex)
     {
+        EnsureNewLineBeforeError();
         Console.Error.WriteLine($"Unexpected error: {ex.Message}");
     }
 }
@@ -307,4 +309,22 @@ static void ClearCurrentLine(int startLeft, int startTop, int length)
     Console.SetCursorPosition(startLeft, startTop);
     Console.Write(new string(' ', length + 1));
     Console.SetCursorPosition(startLeft, startTop);
+}
+
+// helper to ensure, that errors are always printed on a newline
+static void EnsureNewLineBeforeError()
+{
+    try
+    {
+        if (Console.CursorLeft > 0)
+        {
+            Console.Error.WriteLine(); 
+        }
+    }
+    catch (IOException)
+    {
+        // if stderr has been redirected to a file, CursorLeft will fail
+        // in this case, a newline is always added
+        Console.Error.WriteLine();
+    }
 }

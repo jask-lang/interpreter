@@ -30,6 +30,6 @@ public class LangException : Exception
                 : $"[{normalizedPath}:{location}] {message}";
         }
 
-        return string.IsNullOrWhiteSpace(location) ? message : $"{location} {message}";
+        return message;
     }
 }
