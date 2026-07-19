@@ -189,10 +189,11 @@ public partial class Interpreter
                 break;
 
             case Statement.RepeatTimes rt:
-                double repetitions = CheckNumberStmt(new Token(TokenType.Identifier, "repeat", null, 0), Evaluate(rt.Times), "repeat count");
+                int repetitions = (int)CheckNumberStmt(new Token(TokenType.Identifier, "repeat", null, 0), Evaluate(rt.Times), "repeat count");
                 try
                 {
-                    for (int i = 0; i < repetitions; i++)
+                    // comparing to 0 is for a CPU slightly faster
+                    while (repetitions-- > 0)
                     {
                         try
                         {
