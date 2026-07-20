@@ -24,9 +24,13 @@ Allows jask to use *print*
 Allows jask to use *readInput*
 ### allow-read and allow-write
 Can be used with or without paths and multiple times to define exactly the paths and files jask is allowed to read or write.
-Please note, that the interpreter inherits the permissions of the executing user.
+Please note, that the interpreter inherits the permissions of the executing user regarding file access.
 ```terminal
 dotnet run --allow-read
 dotnet run --allow-read="sample.jask"
 dotnet run --allow-read="a/path/to/a/directory --allow-write="a_single_file.txt"
 ```
+Using *allow-read* and *allow-write* without paths enables permissions globally.
+## jask jcore
+Part of the jask language is *jcore*, a library fully written in jask.
+Check out the repository [here](https://github.com/jask-lang/jcore).
