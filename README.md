@@ -16,7 +16,7 @@ dotnet run --allow-stdout
 >>> print("Hello World!") 
 Hello World!
 ```
-Please note that runtime errors are always passed to *stderr* so there is no need for a separate permission for error printing.
+Please note that the interpreter has always the permission to write runtime errors to *stderr*.
 ## Permissions
 ### allow-stdout
 Allows jask to use *print*
@@ -31,6 +31,9 @@ dotnet run --allow-read="sample.jask"
 dotnet run --allow-read="a/path/to/a/directory --allow-write="a_single_file.txt"
 ```
 Using *allow-read* and *allow-write* without paths enables permissions globally.
+### allow-all
+Combines all permissions in one flag.
+Should only be used in testing.
 ## jask jcore
 Part of the jask language is *jcore*, a library fully written in jask.
 Check out the repository [here](https://github.com/jask-lang/jcore).
