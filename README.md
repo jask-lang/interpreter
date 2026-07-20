@@ -16,6 +16,7 @@ dotnet run --allow-stdout
 >>> print("Hello World!") 
 Hello World!
 ```
+Please note that runtime errors are always passed to *stderr* so there is no need for a separate permission for error printing.
 ## Permissions
 ### allow-stdout
 Allows jask to use *print*
