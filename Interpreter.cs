@@ -55,18 +55,21 @@ public partial class Interpreter
 
     private Dictionary<string, object?> CurrentEnvironment => _scopes.Peek();
 
-    public Interpreter() : this(new HashSet<string>(), Directory.GetCurrentDirectory(), Directory.GetCurrentDirectory(), null) { }
+    private PermissionManager _permissionManager;
 
-    public Interpreter(string baseDirectory, string? filePath) : this(new HashSet<string>(), baseDirectory, Directory.GetCurrentDirectory(), filePath) { }
+    public Interpreter(PermissionManager permissionManager) : this(new HashSet<string>(), Directory.GetCurrentDirectory(), Directory.GetCurrentDirectory(), null, permissionManager) { }
+
+    public Interpreter(string baseDirectory, string? filePath, PermissionManager permissionManager) : this(new HashSet<string>(), baseDirectory, Directory.GetCurrentDirectory(), filePath, permissionManager) { }
 
     // internal constructor used when loading a module, so the circular-import guard is shared across the whole chain
-    private Interpreter(HashSet<string> modulesLoading, string baseDirectory, string processDirectory, string? filePath)
+    private Interpreter(HashSet<string> modulesLoading, string baseDirectory, string processDirectory, string? filePath, PermissionManager permissionManager)
     {
         _modulesLoading = modulesLoading;
         _baseDirectory = baseDirectory;
         _processDirectory = processDirectory;
         _filePath = filePath;
         _scopes.Push(_globalEnvironment);
+        _permissionManager = permissionManager;
         initInternalFunctions();
     }
 
@@ -307,7 +310,7 @@ public partial class Interpreter
                 _modulesLoading.Add(fullPath);
                 try
                 {
-                    var moduleInterpreter = new Interpreter(_modulesLoading, Path.GetDirectoryName(fullPath) ?? _baseDirectory, _processDirectory, fullPath);
+                    var moduleInterpreter = new Interpreter(_modulesLoading, Path.GetDirectoryName(fullPath) ?? _baseDirectory, _processDirectory, fullPath, _permissionManager);
                     var lexer = new Lexer(File.ReadAllText(fullPath), false, fullPath);
                     var tokens = lexer.ScanTokens();
                     var parser = new Parser(tokens, fullPath);

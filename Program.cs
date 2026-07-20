@@ -1,30 +1,35 @@
 using System.Text;
 using JaskLang;
 
-// first arg should be a .jask file, otherwise run in interactive mode
-if (args.Length == 1)
+ArgumentsParser argumentParser = new ArgumentsParser(args);
+PermissionManager permissionManager = new PermissionManager(argumentParser);
+
+// we are interpreting a file
+if (argumentParser.Has("--input"))
 {
-    string file = args[0];
+    string file = argumentParser.GetValues("--input").ElementAt(0);
 
     if (File.Exists(file) == false)
     {
-        Console.Error.WriteLine($"File '{file}' not found.");
+        Console.Error.WriteLine($"Input '{file}' cannot be found.");
         return;
     }
 
     if (Path.GetExtension(file) != ".jask")
     {
-        Console.Error.WriteLine($"File '{file}' is not a jask file.");
+        Console.Error.WriteLine($"Input '{file}' is not a jask file.");
         return;
     }
 
     string fullPath = Path.GetFullPath(file);
     string baseDirectory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory();
-    Run(new Interpreter(baseDirectory, fullPath), false, File.ReadAllText(fullPath), fullPath);
+
+    Run(new Interpreter(baseDirectory, fullPath, permissionManager), false, File.ReadAllText(fullPath), fullPath);
 }
+// we are using the interactive mode
 else
 {
-    RunInteractiveMode();
+    RunInteractiveMode(permissionManager);
 }
 
 static void Run(Interpreter interpreter, bool isInteractiveMode, string source, string? filePath = null)
@@ -51,12 +56,12 @@ static void Run(Interpreter interpreter, bool isInteractiveMode, string source, 
     }
 }
 
-static void RunInteractiveMode()
+static void RunInteractiveMode(PermissionManager permissionManager)
 {
     Console.WriteLine("jask lang interpreter 0.0.1");
     Console.WriteLine("Use arrow keys for history, type 'exit' when you are done.");
 
-    var interpreter = new Interpreter();
+    var interpreter = new Interpreter(permissionManager);
     List<string> history = new List<string>();
     
     StringBuilder multiLineBuffer = new StringBuilder();
