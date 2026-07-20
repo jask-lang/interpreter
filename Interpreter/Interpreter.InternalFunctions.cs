@@ -50,6 +50,11 @@ public partial class Interpreter
 
     private object? CallInternalFunctionPrint(Expression.Call call)
     {
+        if (_permissionManager.IsPermitted(Permission.Stdout) == false)
+        {
+            throw new LangException($"Missing permission 'stdout' for function 'print'", GetCallToken(call).Line, _filePath);
+        }
+
         // check number of arguments (print accepts at least 1)
         CheckNumberOfArguments(call, call.Arguments.Count, "print");
 
@@ -174,6 +179,11 @@ public partial class Interpreter
 
     private object? CallInternalFunctionReadInput(Expression.Call call)
     {
+        if (_permissionManager.IsPermitted(Permission.Stdin) == false)
+        {
+            throw new LangException($"Missing permission 'stdin' for function 'readInput'", GetCallToken(call).Line, _filePath);
+        }
+
         if (call.Arguments.Count > 1)
         {
             throw new LangException($"Function 'readInput' expects 0 or 1 argument, but got {call.Arguments.Count}", GetCallToken(call).Line, _filePath);
@@ -191,6 +201,11 @@ public partial class Interpreter
 
     private object? CallInternalFunctionReadFile(Expression.Call call)
     {
+        if (_permissionManager.IsPermitted(Permission.FileRead) == false)
+        {
+            throw new LangException($"Missing permission 'read' for function 'readFile'", GetCallToken(call).Line, _filePath);
+        }
+
         if (call.Arguments.Count > 1)
         {
             throw new LangException($"Function 'readFile' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call).Line, _filePath);
@@ -200,6 +215,11 @@ public partial class Interpreter
         if (pathArg is not string path)
         {
             throw new LangException($"Function 'readFile' expects a string argument, but got '{GetValueType(pathArg)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        if (_permissionManager.IsPathPermitted(Permission.FileRead, path) == false)
+        {
+            throw new LangException($"Missing permission 'read' on '{path}' for function 'readFile'", GetCallToken(call).Line, _filePath);
         }
 
         if (File.Exists(path) == false)
