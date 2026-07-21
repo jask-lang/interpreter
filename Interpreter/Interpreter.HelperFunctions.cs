@@ -147,8 +147,6 @@ public partial class Interpreter
 
         if (value is List<object?> list)
         {
-            //var elements = list.Select(Stringify).ToList();
-            //return "[" + string.Join(", ", elements) + "]";
             StringBuilder result = new StringBuilder("[");
             for (int i = 0; i < list.Count; i++)
             {
