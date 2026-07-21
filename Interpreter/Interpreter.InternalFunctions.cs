@@ -33,6 +33,9 @@ public partial class Interpreter
         // list functions
         initInternalFunctionsList();
 
+        // trust engine
+        initInternalFunctionsTrustEngine();
+
         // IO functions
         _internalFunctions["readInput"] = CallInternalFunctionReadInput;
         _internalFunctions["readFile"]  = CallInternalFunctionReadFile;
@@ -196,7 +199,7 @@ public partial class Interpreter
             Console.Write(Stringify(promptValue));
         }
 
-        return Console.ReadLine();
+        return new UntrustedValue(Console.ReadLine() ?? null);
     }
 
     private object? CallInternalFunctionReadFile(Expression.Call call)

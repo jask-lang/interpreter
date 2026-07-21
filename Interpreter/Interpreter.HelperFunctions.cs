@@ -32,6 +32,7 @@ public partial class Interpreter
             bool   => "boolean",
             List<object?> => "list",
             StructInstance si => si.TypeName,
+            UntrustedValue uv => "untrusted",
             null => "nil",
             _ => value.GetType().Name
         };
@@ -133,6 +134,7 @@ public partial class Interpreter
         if (value is null) return "nil";
         if (value is bool b) return b ? "true" : "false";
         if (value is StructInstance si) return si.ToString();
+        if (value is UntrustedValue uv) return "untrusted";
 
         if (value is double d)
         {
@@ -217,6 +219,10 @@ public partial class Interpreter
 
             "readInput" => new() { "prompt" },
             "readFile"  => new() { "file" },
+
+            "trust"     => new() { "untrusted" },
+            "verify"    => new() { "untrusted", "pattern" },
+            "untrusted" => new() { "value" },
 
             "listSize"     => new() { "list" },
             "listAdd"      => new() { "list", "element" },
