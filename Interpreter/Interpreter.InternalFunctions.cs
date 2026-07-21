@@ -206,10 +206,7 @@ public partial class Interpreter
             throw new LangException($"Missing permission 'read' for function 'readFile'", GetCallToken(call).Line, _filePath);
         }
 
-        if (call.Arguments.Count > 1)
-        {
-            throw new LangException($"Function 'readFile' expects 1 argument, but got {call.Arguments.Count}", GetCallToken(call).Line, _filePath);
-        }
+        CheckNumberOfArguments(call, 1, "readFile");
 
         object? pathArg = Evaluate(call.Arguments[0]);
         if (pathArg is not string path)
