@@ -31,9 +31,13 @@ dotnet run --allow-read="sample.jask"
 dotnet run --allow-read="a/path/to/a/directory --allow-write="a_single_file.txt"
 ```
 Using *allow-read* and *allow-write* without paths enables permissions globally.
+### allow-trust
+Allows the usage of `trust()` for external provided, untrusted values.
+Should not be used, since simply trusting external input can be dangerous.
+Untrusted values should be verified using `verify()` instead.
 ### allow-all
 Combines all permissions in one flag.
-Should only be used in testing.
+Can be dangerous, so should only be used in testing.
 ## jask jcore
 Part of the jask language is *jcore*, a library fully written in jask.
 Check out the repository [here](https://github.com/jask-lang/jcore).
