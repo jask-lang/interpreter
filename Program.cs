@@ -1,8 +1,23 @@
 using System.Text;
 using JaskLang;
 
+const String JASK_VERSION = "0.0.1";
+
+static void printVersionMessage()
+{
+    Console.WriteLine($"jask lang interpreter {JASK_VERSION}");
+}
+
 ArgumentsParser argumentParser = new ArgumentsParser(args);
 PermissionManager permissionManager = new PermissionManager(argumentParser);
+
+// when are only printing the version and then exit the interpreter
+if (argumentParser.Has("--version"))
+{
+    printVersionMessage();
+    return;
+}
+
 
 // we are interpreting a file
 if (argumentParser.Has("--input"))
@@ -58,7 +73,7 @@ static void Run(Interpreter interpreter, bool isInteractiveMode, string source, 
 
 static void RunInteractiveMode(PermissionManager permissionManager)
 {
-    Console.WriteLine("jask lang interpreter 0.0.1");
+    printVersionMessage();
     Console.WriteLine("Use arrow keys for history, type 'exit' when you are done.");
 
     var interpreter = new Interpreter(permissionManager);
