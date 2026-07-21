@@ -11,6 +11,7 @@ public partial class Interpreter
     {
         // standard functions
         _internalFunctions["print"]       = CallInternalFunctionPrint;
+        _internalFunctions["printLine"]   = CallInternalFunctionPrintLine;
         _internalFunctions["type"]        = CallInternalFunctionType;
         _internalFunctions["clock"]       = CallInternalFunctionClock;
         _internalFunctions["exit"]        = CallInternalFunctionExit;
@@ -69,6 +70,29 @@ public partial class Interpreter
         }
 
         Console.Write(string.Join("", parts));
+
+        return null;
+    }
+
+    private object? CallInternalFunctionPrintLine(Expression.Call call)
+    {
+        if (_permissionManager.IsPermitted(Permission.Stdout) == false)
+        {
+            throw new LangException($"Missing permission 'stdout' for function 'printLine'", GetCallToken(call).Line, _filePath);
+        }
+
+        // check number of arguments (printLine accepts at least 1)
+        CheckNumberOfArguments(call, call.Arguments.Count, "printLine");
+
+        // print all arguments
+        var parts = new List<string>();
+        foreach (var arg in call.Arguments)
+        {
+            parts.Add(Stringify(Evaluate(arg)));
+        }
+
+        Console.Write(string.Join("", parts));
+        Console.WriteLine();
 
         return null;
     }
