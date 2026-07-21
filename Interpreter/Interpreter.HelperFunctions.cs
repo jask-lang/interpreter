@@ -192,6 +192,9 @@ public partial class Interpreter
             "toNumber" => new() { "value" },
             "toString" => new() { "value" },
 
+            "readInput" => new() { "prompt" },
+            "readFile"  => new() { "file" },
+
             "listSize"     => new() { "list" },
             "listAdd"      => new() { "list", "element" },
             "listGet"      => new() { "list", "index" },
