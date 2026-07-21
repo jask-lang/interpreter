@@ -9,7 +9,8 @@ public enum Permission : uint
     FileRead  = 1 << 2,
     FileWrite = 1 << 3,
     Network   = 1 << 4,
-    All = Stdout | Stdin | FileRead | FileWrite | Network
+    Trust     = 1 << 5,
+    All = Stdout | Stdin | FileRead | FileWrite | Network | Trust
 }
 
 public class ArgumentsParser
@@ -74,6 +75,7 @@ public class PermissionManager
         if (argumentParser.Has("--allow-stdout"))  Grant(Permission.Stdout);
         if (argumentParser.Has("--allow-stdin"))   Grant(Permission.Stdin);
         if (argumentParser.Has("--allow-network")) Grant(Permission.Network);
+        if (argumentParser.Has("--allow-trust"))   Grant(Permission.Trust);
 
         // parse multiple flags for file read
         if (argumentParser.Has("--allow-read"))
