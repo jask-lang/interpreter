@@ -291,25 +291,7 @@ public partial class Interpreter
 
         object? argValue = Evaluate(call.Arguments[0]);
 
-        if (argValue is double d)
-        {
-            return d;
-        }
-        else if (argValue is string s)
-        {
-            if (double.TryParse(s, out double parsed))
-            {
-                return parsed;
-            }
-            else
-            {
-                throw new LangException($"Function 'toNumber' could not convert string '{s}' to a number", GetCallToken(call).Line, _filePath);
-            }
-        }
-        else
-        {
-            throw new LangException($"Function 'toNumber' expects a number or string argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
-        }
+        return convertToNumber(argValue, "toNumber", call);
     }
 
     private object? CallInternalFunctionToString(Expression.Call call)

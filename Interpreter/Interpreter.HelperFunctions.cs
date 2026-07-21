@@ -173,6 +173,29 @@ public partial class Interpreter
         return value.ToString() ?? "nil";
     }
 
+    private double convertToNumber(object? arg, string functionName, Expression.Call call)
+    {
+        if (arg is double d)
+        {
+            return d;
+        }
+        else if (arg is string s)
+        {
+            if (double.TryParse(s, out double parsed))
+            {
+                return parsed;
+            }
+            else
+            {
+                throw new LangException($"Function '{functionName}' could not convert string '{s}' to a number", GetCallToken(call).Line, _filePath);
+            }
+        }
+        else
+        {
+            throw new LangException($"Function '{functionName}' expects a number or string argument, but got '{GetValueType(arg)}'", GetCallToken(call).Line, _filePath);
+        }
+    }
+
     private List<string> GetInternalFunctionParameterNames(string funcName)
     {
         return funcName switch
