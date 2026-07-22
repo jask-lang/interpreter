@@ -153,11 +153,37 @@ public class PermissionManager
 
         try
         {
+            // resolve relative parts and standardize slashes for the target
             string fullTargetPath = Path.GetFullPath(targetPath);
 
-            foreach (var allowedPath in allowedList)
+            // select appropriate comparison for operating system
+            StringComparison comparison = OperatingSystem.IsWindows() 
+                ? StringComparison.OrdinalIgnoreCase 
+                : StringComparison.Ordinal;
+
+            foreach (var rawAllowed in allowedList)
             {
-                if (fullTargetPath.StartsWith(allowedPath, StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrWhiteSpace(rawAllowed))
+                {
+                    continue;
+                }
+
+                // normalize the allowed path
+                string fullAllowedPath = Path.GetFullPath(rawAllowed);
+
+                // exact match (file or directory match)
+                if (fullTargetPath.Equals(fullAllowedPath, comparison))
+                {
+                    return true;
+                }
+
+                // ensure that allowed path ends with a separator before checking directory prefix
+                // this prevents false positives like matching "C:\App" against "C:\AppSecret"
+                string prefix = fullAllowedPath.EndsWith(Path.DirectorySeparatorChar) || fullAllowedPath.EndsWith(Path.AltDirectorySeparatorChar)
+                    ? fullAllowedPath
+                    : fullAllowedPath + Path.DirectorySeparatorChar;
+
+                if (fullTargetPath.StartsWith(prefix, comparison))
                 {
                     return true;
                 }
