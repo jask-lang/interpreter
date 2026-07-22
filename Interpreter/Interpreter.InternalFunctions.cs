@@ -254,7 +254,7 @@ public partial class Interpreter
         try
         {
             string content = File.ReadAllText(path);
-            return content;
+            return new UntrustedValue(content);
         }
         catch
         {
