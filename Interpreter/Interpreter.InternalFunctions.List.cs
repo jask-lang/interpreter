@@ -33,14 +33,14 @@ public partial class Interpreter
 
         object? listObj = Evaluate(call.Arguments[0]);
 
-        if (listObj is not List<object?> list)
-        {
-            throw new LangException($"Function 'listSize' expects a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
-        }
-
         if (listObj is string listString)
         {
             return (double)listString.Length;
+        }
+
+        if (listObj is not List<object?> list)
+        {
+            throw new LangException($"Function 'listSize' expects a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
         }
 
         return (double)list.Count;
