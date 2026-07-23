@@ -158,7 +158,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
         Token name = Consume(TokenType.Identifier, "Expected a function name after 'function'");
         Consume(TokenType.LParen, "Expected '(' after function name");
 
-        var parameters = new List<(Token Name, Token Type)>();
+        var parameters = new List<(Token Name, Token Type, Expression? Default)>();
         if (Check(TokenType.RParen) == false)
         {
             do
@@ -167,7 +167,14 @@ public class Parser(List<Token> tokens, string? filePath = null)
                 Consume(TokenType.Colon, "Expected ':' after parameter name");
 
                 Token paramType = Consume(TokenType.Identifier, "Expected parameter type");
-                parameters.Add((paramName, paramType));
+
+                Expression? defaultValue = null;
+                if (Match(TokenType.Assign))
+                {
+                    defaultValue = Expression();
+                }
+
+                parameters.Add((paramName, paramType, defaultValue));
             }
             while (Match(TokenType.Comma));
         }

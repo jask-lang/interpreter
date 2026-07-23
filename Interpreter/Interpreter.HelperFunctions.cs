@@ -7,7 +7,7 @@ public partial class Interpreter
     private static string FunctionKey(string name, IEnumerable<string> paramTypes)
         => $"{name}({string.Join(",", paramTypes)})";
 
-    private static string FunctionKey(string name, List<(Token Name, Token Type)> parameters)
+    private static string FunctionKey(string name, List<(Token Name, Token Type, JaskLang.Expression? Default)> parameters)
         => FunctionKey(name, parameters.Select(p => p.Type.Lexeme));
     
     private static bool IsValueOfType(object? value, string typeName)

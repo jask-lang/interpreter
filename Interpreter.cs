@@ -28,7 +28,7 @@ public class RestrictedValue : object
 public partial class Interpreter
 {
     // dictionary for functions: "name(type1,type2,...)" -> (parameters, body)
-    private readonly Dictionary<string, (List<(Token Name, Token Type)> Params, List<Statement> Body)> _functions = [];
+    private readonly Dictionary<string, (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> _functions = [];
 
     // dictionary for struct definitions: name -> body statements
     private readonly Dictionary<string, List<Statement>> _structs = [];

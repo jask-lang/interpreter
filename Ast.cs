@@ -49,7 +49,7 @@ public abstract record Statement
 
     public record Continue() : Statement;
 
-    public record Function(Token Name, List<(Token Name, Token Type)> Params, List<Statement> Body) : Statement;
+    public record Function(Token Name, List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body) : Statement;
 
     public record Expression(JaskLang.Expression Value) : Statement;
 

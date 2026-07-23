@@ -150,34 +150,57 @@ public partial class Interpreter
             .ToList();
 
         if (overloads.Count == 0)
+        {
             throw new LangException($"Unknown function '{funcName}'", funcExpr.Name.Line, _filePath);
+        }
 
-        // pick most specific overload: sort so overloads with fewer 'any' params come first
+        // pick best overload: required params = those without defaults
+        // match if argCount in [requiredParams, totalParams] and types compatible
         var match = overloads
-            .OrderBy(o => o.Params.Count(p => p.Type.Lexeme == "any"))
-            .FirstOrDefault(o =>
-                o.Params.Count == argValues.Count &&
-                o.Params.Zip(argValues, (p, v) => IsValueOfType(v, p.Type.Lexeme)).All(x => x));
+            .Select(o => (o, required: o.Params.Count(p => p.Item3 == null)))
+            .Where(x => argValues.Count >= x.required && argValues.Count <= x.o.Params.Count)
+            .Where(x => x.o.Params.Zip(argValues, (p, v) => IsValueOfType(v, p.Type.Lexeme)).All(z => z))
+            .OrderByDescending(x => x.required)
+            .ThenBy(x => x.o.Params.Count(p => p.Type.Lexeme == "any"))
+            .Select(x => x.o)
+            .FirstOrDefault();
 
         if (match == default)
         {
             // no user overload matched — fall back to internal if one exists
             if (_internalFunctions.TryGetValue(funcName, out var internalFunction))
+            {
                 return internalFunction(call);
+            }
 
-            bool anyArity = overloads.Any(o => o.Params.Count == argValues.Count);
+            bool anyArity = overloads.Any(o => o.Params.Count >= argValues.Count && o.Params.Count(p => p.Item3 == null) <= argValues.Count);
             if (anyArity)
-                throw new LangException(
-                    $"Function '{funcName}' has no overload matching types ({string.Join(", ", argValues.Select(GetValueType))})", funcExpr.Name.Line, _filePath);
-            throw new LangException(
-                $"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name.Line, _filePath);
+            {
+                throw new LangException($"Function '{funcName}' has no overload matching types ({string.Join(", ", argValues.Select(GetValueType))})", funcExpr.Name.Line, _filePath);
+            }
+
+            throw new LangException($"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name.Line, _filePath);
         }
 
         var (parameters, body) = match;
 
         var functionEnv = new Dictionary<string, object?>();
-        for (int i = 0; i < parameters.Count; i++)
+
+        // bind supplied arguments to leading parameters
+        for (int i = 0; i < argValues.Count; i++)
+        {
             functionEnv[parameters[i].Name.Lexeme] = argValues[i];
+        }
+
+        // bind defaults for remaining parameters
+        for (int i = argValues.Count; i < parameters.Count; i++)
+        {
+            if (parameters[i].Item3 != null)
+            {
+                // Item3 cannot be null here so we can use null-forgiving
+                functionEnv[parameters[i].Name.Lexeme] = Evaluate(parameters[i].Item3!);
+            }
+        }
 
         // call function body in the new environment
         _scopes.Push(functionEnv);
@@ -263,33 +286,56 @@ public partial class Interpreter
 
         var suppliedParamNames = call.Args.Select(a => a.ParamName.Lexeme).ToHashSet();
 
-        // find overload matching both param names and compatible types
-        var match = overloads.FirstOrDefault(o =>
-            o.Params.Count == call.Args.Count &&
-            o.Params.Select(p => p.Name.Lexeme).ToHashSet().SetEquals(suppliedParamNames) &&
-            o.Params.All(p =>
+        // find overload: supplied names must be a subset of param names,
+        // and at least all required (non-default) params must be supplied
+        var match = overloads
+            .Select(o => (o, required: o.Params.Count(p => p.Item3 == null)))
+            .Where(x => call.Args.Count >= x.required && call.Args.Count <= x.o.Params.Count)
+            .Where(x => x.o.Params.Select(p => p.Name.Lexeme).ToHashSet().IsSupersetOf(suppliedParamNames))
+            .Where(x => x.o.Params.All(p =>
             {
+                if (!evaluatedArgs.Any(a => a.ParamName.Lexeme == p.Name.Lexeme))
+                {
+                    // missing arg is OK only if default exists
+                    return p.Item3 != null;
+                }
+
                 var arg = evaluatedArgs.First(a => a.ParamName.Lexeme == p.Name.Lexeme);
                 return IsValueOfType(arg.Value, p.Type.Lexeme);
-            }));
+            }))
+            .OrderByDescending(x => x.required)
+            .ThenBy(x => x.o.Params.Count(p => p.Type.Lexeme == "any"))
+            .Select(x => x.o)
+            .FirstOrDefault();
 
         if (match == default)
-            throw new LangException(
-                $"Function '{name}' has no overload matching named parameters ({string.Join(", ", suppliedParamNames)})", call.Name.Line, _filePath);
+        {
+            throw new LangException($"Function '{name}' has no overload matching named parameters ({string.Join(", ", suppliedParamNames)})", call.Name.Line, _filePath);
+        }
 
-        // bind in parameter declaration order
+        // bind in parameter declaration order, filling defaults for omitted params
         var functionEnv = new Dictionary<string, object?>();
         foreach (var param in match.Params)
         {
-            var arg = evaluatedArgs.First(a => a.ParamName.Lexeme == param.Name.Lexeme);
-            functionEnv[param.Name.Lexeme] = arg.Value;
+            var supplied = evaluatedArgs.FirstOrDefault(a => a.ParamName.Lexeme == param.Name.Lexeme);
+            var found = !supplied.Equals(default);
+            if (found)
+            {
+                functionEnv[param.Name.Lexeme] = supplied.Value;
+            }
+            else if (param.Item3 != null)
+            {
+                functionEnv[param.Name.Lexeme] = Evaluate(param.Item3);
+            }
         }
 
         _scopes.Push(functionEnv);
         try
         {
             foreach (var stmt in match.Body)
+            {
                 Execute(stmt);
+            }
         }
         catch (ReturnException ex)
         {
