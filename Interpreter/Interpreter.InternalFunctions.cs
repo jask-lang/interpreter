@@ -38,8 +38,9 @@ public partial class Interpreter
         initInternalFunctionsTrustEngine();
 
         // IO functions
-        _internalFunctions["readInput"] = CallInternalFunctionReadInput;
-        _internalFunctions["readFile"]  = CallInternalFunctionReadFile;
+        _internalFunctions["readInput"]  = CallInternalFunctionReadInput;
+        _internalFunctions["readFile"]   = CallInternalFunctionReadFile;
+        _internalFunctions["writeFile"]  = CallInternalFunctionWriteFile;
     }
 
     private Token GetCallToken(Expression.Call call) => ((Expression.Variable)call.Callee).Name;
@@ -260,6 +261,44 @@ public partial class Interpreter
         {
             throw new LangException($"Reading file at '{path}' failed", GetCallToken(call).Line, _filePath);
         }
+    }
+
+    private object? CallInternalFunctionWriteFile(Expression.Call call)
+    {
+        if (_permissionManager.IsPermitted(Permission.FileWrite) == false)
+        {
+            throw new LangException($"Missing permission 'write' for function 'writeFile'", GetCallToken(call).Line, _filePath);
+        }
+
+        CheckNumberOfArguments(call, 2, "writeFile");
+
+        object? pathArg = Evaluate(call.Arguments[0]);
+        if (pathArg is not string path)
+        {
+            throw new LangException($"Function 'writeFile' expects a string argument for path, but got '{GetValueType(pathArg)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        if (_permissionManager.IsPathPermitted(Permission.FileWrite, path) == false)
+        {
+            throw new LangException($"Missing permission 'write' on '{path}' for function 'writeFile'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? contentArg = Evaluate(call.Arguments[1]);
+        if (contentArg is not string content)
+        {
+            throw new LangException($"Function 'writeFile' expects a string argument for content, but got '{GetValueType(contentArg)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        try
+        {
+            File.WriteAllText(path, content);
+        }
+        catch
+        {
+            throw new LangException($"Writing file at '{path}' failed", GetCallToken(call).Line, _filePath);
+        }
+
+        return null;
     }
 
     private object? CallInternalFunctionExit(Expression.Call call)
