@@ -1,5 +1,11 @@
 namespace JaskLang;
 
+public enum ResultType : uint
+{
+    OK = 0,
+    NOT_OK = 1
+}
+
 public class UntrustedValue : object
 {
     public object? Value { get; set; }
@@ -18,7 +24,7 @@ public partial class Interpreter
         _internalFunctions["untrust"] = CallInternalFunctionUntrust;
     }
 
-    private object CallInternalFunctionTrust(Expression.Call call)
+    private object? CallInternalFunctionTrust(Expression.Call call)
     {
         if (_permissionManager.IsPermitted(Permission.Trust) == false)
         {
@@ -33,12 +39,7 @@ public partial class Interpreter
             throw new LangException($"Function 'trust' expects an untrusted value but got '{GetValueType(untrustedValueObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        if (uv.Value != null)
-        {
-            return uv.Value;
-        }
-
-        throw new LangException("Trusting untrusted value failed", GetCallToken(call).Line, _filePath);
+        return uv.Value;
     }
 
     private object CallInternalFunctionVerify(Expression.Call call)
@@ -57,25 +58,30 @@ public partial class Interpreter
             throw new LangException($"Function 'verify' expects a string pattern but got '{GetValueType(patternObj)}'", GetCallToken(call).Line, _filePath);
         }
 
+        if (uv.Value == null)
+        {
+            return createStructInstanceFromResult(ResultType.NOT_OK, null, "Untrusted value for verify is nil");
+        }
+
         switch (pattern)
         {
             case "string":
-                return Stringify(uv.Value);
+                return createStructInstanceFromResult(ResultType.OK, Stringify(uv.Value));
             
             case "number":
-                return convertToNumber(uv.Value, "verify", call);
+                if (double.TryParse(uv.Value.ToString(), out double num))
+                {
+                    return createStructInstanceFromResult(ResultType.OK, num);
+                }
+                return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' with pattern '{pattern}'");
+            
+            case "boolean":
+                if (uv.Value.ToString() == "true")  return createStructInstanceFromResult(ResultType.OK, true);
+                if (uv.Value.ToString() == "false") return createStructInstanceFromResult(ResultType.OK, false);
+                break;
         }
 
-        if (uv.Value is string s)
-        {
-            if (pattern == "boolean")
-            {
-                if (s == "true")  return true;
-                if (s == "false") return false;
-            }
-        }
-
-        throw new LangException($"Verify failed for untrusted value '{uv.Value}' and pattern '{pattern}'", GetCallToken(call).Line, _filePath);
+        return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Unknown verify pattern '{pattern}' for value {uv.Value}");
     }
 
     private object CallInternalFunctionUntrust(Expression.Call call)
