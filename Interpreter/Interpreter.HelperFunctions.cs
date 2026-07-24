@@ -236,4 +236,16 @@ public partial class Interpreter
             _ => throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath)
         };
     }
+
+    private StructInstance createStructInstanceFromResult(ResultType result, object? value, string? error = null)
+    {
+        var fields = new Dictionary<string, object?>
+        {
+            { "type", result == ResultType.OK ? "OK" : "ERR" },
+            { "value", value },
+            { "error", error}
+        };
+
+        return new StructInstance("Result", fields);
+    }
 }
