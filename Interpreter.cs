@@ -50,7 +50,7 @@ public partial class Interpreter
 
     // stack for environments to manage scopes
     private readonly Stack<Dictionary<string, object?>> _scopes = new();
-    
+
     private Dictionary<string, object?> _globalEnvironment = [];
 
     private Dictionary<string, object?> CurrentEnvironment => _scopes.Peek();
@@ -184,23 +184,6 @@ public partial class Interpreter
                         try
                         {
                             foreach (var s in fi.Body) Execute(s);
-                        }
-                        catch (ContinueException) { }
-                    }
-                }
-                catch (BreakException) { }
-                break;
-
-            case Statement.RepeatTimes rt:
-                int repetitions = (int)CheckNumberStmt(new Token(TokenType.Identifier, "repeat", null, 0), Evaluate(rt.Times), "repeat count");
-                try
-                {
-                    // comparing to 0 is for a CPU slightly faster
-                    while (repetitions-- > 0)
-                    {
-                        try
-                        {
-                            Evaluate(rt.Body);
                         }
                         catch (ContinueException) { }
                     }

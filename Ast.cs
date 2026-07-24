@@ -23,7 +23,7 @@ public abstract record Expression
  
     public record StructCall(Token Name, List<(Token Field, JaskLang.Expression Value)> FieldInits) : Expression;
 
-    public record MemberAccess(JaskLang.Expression Struct, Token Member) : Expression;
+    public record MemberAccess(Expression Struct, Token Member) : Expression;
 }
 
 // everything that is executed but does not produce a value itself
@@ -42,8 +42,6 @@ public abstract record Statement
     public record While(JaskLang.Expression Condition, List<Statement> Body) : Statement;
 
     public record ForIn(Token Variable, JaskLang.Expression Collection, List<Statement> Body) : Statement;
-
-    public record RepeatTimes(JaskLang.Expression Body, JaskLang.Expression Times) : Statement;
 
     public record Break() : Statement;
 

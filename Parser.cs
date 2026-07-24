@@ -25,7 +25,6 @@ public class Parser(List<Token> tokens, string? filePath = null)
         if (Match(TokenType.If))       return IfStatement();
         if (Match(TokenType.While))    return WhileStatement();
         if (Match(TokenType.For))      return ForStatement();
-        if (Match(TokenType.Repeat))   return RepeatStatement();
         if (Match(TokenType.Function)) return FunctionStatement();
         if (Match(TokenType.Struct))   return StructStatement();
         if (Match(TokenType.Use))      return UseStatement();
@@ -140,16 +139,6 @@ public class Parser(List<Token> tokens, string? filePath = null)
         Consume(TokenType.EndFor, "Expected 'endfor' at the end of the for loop");
 
         return new Statement.ForIn(variable, collection, body);
-    }
-
-    private Statement RepeatStatement()
-    {
-        // repeat <expression> <times> times
-        Expression body = Expression();
-        Expression times = Expression();
-        Consume(TokenType.Times, "Expected 'times' after the body of the repeat statement");
-
-        return new Statement.RepeatTimes(body, times);
     }
 
     private Statement FunctionStatement()
