@@ -15,7 +15,7 @@ public partial class Interpreter
     {
         _internalFunctions["trust"]     = CallInternalFunctionTrust;
         _internalFunctions["verify"]    = CallInternalFunctionVerify;
-        _internalFunctions["untrusted"] = CallInternalFunctionUntrusted;
+        _internalFunctions["untrust"] = CallInternalFunctionUntrust;
     }
 
     private object CallInternalFunctionTrust(Expression.Call call)
@@ -78,7 +78,7 @@ public partial class Interpreter
         throw new LangException($"Verify failed for untrusted value '{uv.Value}' and pattern '{pattern}'", GetCallToken(call).Line, _filePath);
     }
 
-    private object CallInternalFunctionUntrusted(Expression.Call call)
+    private object CallInternalFunctionUntrust(Expression.Call call)
     {
         CheckNumberOfArguments(call, 1, "untrusted");
 
