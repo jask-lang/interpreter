@@ -210,7 +210,8 @@ public partial class Interpreter
             case Statement.Struct s:
                 var structKey = s.Name.Lexeme;
 
-                if (_structs.ContainsKey(structKey))
+                // look into existing struct definitions and check for 'Result' since it is reserved for the interpreter
+                if (_structs.ContainsKey(structKey) || structKey == "Result")
                 {
                     throw new LangException($"Struct '{s.Name.Lexeme}' is already defined", s.Name.Line, _filePath);
                 }
