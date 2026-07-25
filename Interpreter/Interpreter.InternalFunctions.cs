@@ -34,6 +34,9 @@ public partial class Interpreter
         // list functions
         initInternalFunctionsList();
 
+        // map functions
+        initInternalFunctionsMap();
+
         // trust engine
         initInternalFunctionsTrustEngine();
 
