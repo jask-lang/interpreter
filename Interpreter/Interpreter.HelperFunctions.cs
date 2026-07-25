@@ -273,7 +273,8 @@ public partial class Interpreter
             "listReverse"  => new() { "list" },
             "listExtend"   => new() { "list", "expander" },
 
-            "map" => new() { "keys", "values" },
+            "map"    => new() { "keys", "values" },
+            "mapGet" => new() { "map", "key" },
 
             _ => throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath)
         };

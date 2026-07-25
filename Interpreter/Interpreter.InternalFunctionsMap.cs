@@ -4,7 +4,8 @@ public partial class Interpreter
 {
     private void initInternalFunctionsMap()
     {
-        _internalFunctions["map"] = CallInternalFunctionMap;
+        _internalFunctions["map"]    = CallInternalFunctionMap;
+        _internalFunctions["mapGet"] = CallInternalFunctionMapGet;
     }
 
     private object? CallInternalFunctionMap(Expression.Call call)
@@ -57,5 +58,31 @@ public partial class Interpreter
         }
 
         return map;
+    }
+
+    private object? CallInternalFunctionMapGet(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "mapGet");
+
+        object? mapObj = Evaluate(call.Arguments[0]);
+
+        if (mapObj is not Dictionary<object, object> map)
+        {
+            throw new LangException($"Function 'mapGet' expects a map, but got '{GetValueType(mapObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? key = Evaluate(call.Arguments[1]);
+
+        if (key is null)
+        {
+            throw new LangException($"Function 'mapGet' cannot use 'nil' as key", GetCallToken(call).Line, _filePath);
+        }
+
+        if (map.ContainsKey(key) == false)
+        {
+            throw new LangException($"Function 'mapGet' cannot find key '{key}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return map[key];
     }
 }
