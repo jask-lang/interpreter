@@ -257,6 +257,12 @@ public partial class Interpreter
             case Statement.Use u:
                 object? value = Evaluate(u.Value);
 
+                // first, check permissions for reading files
+                if (_permissionManager.IsPermitted(Permission.FileRead) == false)
+                {
+                    throw new LangException("Missing permission 'read' for loading modules", u.Alias.Line, _filePath);
+                }
+
                 if (value is not string)
                 {
                     throw new LangException($"'use' statement expects a string as module path, but got '{GetValueType(value)}'");
@@ -270,6 +276,11 @@ public partial class Interpreter
                 }
 
                 string fullPath = ResolveModulePath(modulePath);
+
+                if (_permissionManager.IsPathPermitted(Permission.FileRead, fullPath) == false)
+                {
+                    throw new LangException($"Missing permission 'read' on '{fullPath}' for loading module", u.Alias.Line, _filePath);
+                }
 
                 if (File.Exists(fullPath) == false)
                 {
