@@ -172,6 +172,46 @@ public partial class Interpreter
             return result.ToString();
         }
 
+        if (value is Dictionary<object, object> map)
+        {
+            StringBuilder result = new StringBuilder("[");
+            var keys = map.Keys.ToList();
+
+            for (int i = 0; i < map.Count; i++)
+            {
+                var key = keys[i];
+                var ele = map[key];
+
+                if (i > 0)
+                {
+                    result.Append(", ");
+                }
+
+                if (key is string strKey)
+                {
+                    result.Append("\"" + strKey + "\"");
+                }
+                else
+                {
+                    result.Append(Stringify(key));
+                }
+
+                result.Append(" = ");
+
+                if (ele is string strEle)
+                {
+                    result.Append("\"" + strEle + "\"");
+                }
+                else
+                {
+                    result.Append(Stringify(ele));
+                }
+            }
+
+            result.Append("]");
+            return result.ToString();
+        }
+
         return value.ToString() ?? "nil";
     }
 
