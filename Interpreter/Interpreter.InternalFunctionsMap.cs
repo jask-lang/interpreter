@@ -10,6 +10,7 @@ public partial class Interpreter
         _internalFunctions["mapGetKeys"]   = CallInternalFunctionMapGetKeys;
         _internalFunctions["mapGetValues"] = CallInternalFunctionMapGetValues;
         _internalFunctions["mapHasKey"]    = CallInternalFunctionMapHasKey;
+        _internalFunctions["mapSize"]    = CallInternalFunctionMapSize;
     }
 
     private object? CallInternalFunctionMap(Expression.Call call)
@@ -167,5 +168,19 @@ public partial class Interpreter
         }
 
         return map.ContainsKey(key);
+    }
+
+    private object? CallInternalFunctionMapSize(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "mapSize");
+
+        object? mapObj = Evaluate(call.Arguments[0]);
+
+        if (mapObj is not Dictionary<object, object> map)
+        {
+            throw new LangException($"Function 'mapSize' expects a map, but got '{GetValueType(mapObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return map.Keys.Count;
     }
 }
