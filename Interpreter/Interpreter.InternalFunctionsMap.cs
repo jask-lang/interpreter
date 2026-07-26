@@ -4,8 +4,11 @@ public partial class Interpreter
 {
     private void initInternalFunctionsMap()
     {
-        _internalFunctions["map"]    = CallInternalFunctionMap;
-        _internalFunctions["mapGet"] = CallInternalFunctionMapGet;
+        _internalFunctions["map"]          = CallInternalFunctionMap;
+        _internalFunctions["mapGet"]       = CallInternalFunctionMapGet;
+        _internalFunctions["mapSet"]       = CallInternalFunctionMapSet;
+        _internalFunctions["mapGetKeys"]   = CallInternalFunctionMapGetKeys;
+        _internalFunctions["mapGetValues"] = CallInternalFunctionMapGetValues;
     }
 
     private object? CallInternalFunctionMap(Expression.Call call)
@@ -84,5 +87,63 @@ public partial class Interpreter
         }
 
         return map[key];
+    }
+
+    private object? CallInternalFunctionMapSet(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 3, "mapSet");
+
+        object? mapObj = Evaluate(call.Arguments[0]);
+
+        if (mapObj is not Dictionary<object, object> map)
+        {
+            throw new LangException($"Function 'mapSet' expects a map, but got '{GetValueType(mapObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? key = Evaluate(call.Arguments[1]);
+
+        if (key is null)
+        {
+            throw new LangException($"Function 'mapSet' cannot use 'nil' as key", GetCallToken(call).Line, _filePath);
+        }
+
+        object? value = Evaluate(call.Arguments[2]);
+
+        if (value is null)
+        {
+            throw new LangException($"Function 'mapSet' cannot use 'nil' as value", GetCallToken(call).Line, _filePath);
+        }
+
+        map[key] = value;
+
+        return map;
+    }
+
+    private object? CallInternalFunctionMapGetKeys(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "mapGetKeys");
+
+        object? mapObj = Evaluate(call.Arguments[0]);
+
+        if (mapObj is not Dictionary<object, object> map)
+        {
+            throw new LangException($"Function 'mapGetKeys' expects a map, but got '{GetValueType(mapObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return map.Keys.ToList();
+    }
+
+    private object? CallInternalFunctionMapGetValues(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "mapGetValues");
+
+        object? mapObj = Evaluate(call.Arguments[0]);
+
+        if (mapObj is not Dictionary<object, object> map)
+        {
+            throw new LangException($"Function 'mapGetValues' expects a map, but got '{GetValueType(mapObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return map.Values.ToList();
     }
 }
