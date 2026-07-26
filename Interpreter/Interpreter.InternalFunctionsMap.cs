@@ -211,5 +211,36 @@ public partial class Interpreter
         map.Remove(key);
 
         return map;
+    private object? CallInternalFunctionMapMerge(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "mapMerge");
+
+        object? mapObj1 = Evaluate(call.Arguments[0]);
+
+        if (mapObj1 is not Dictionary<object, object> map1)
+        {
+            throw new LangException($"Function 'mapMerge' expects a map, but got '{GetValueType(mapObj1)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? mapObj2 = Evaluate(call.Arguments[1]);
+
+        if (mapObj2 is not Dictionary<object, object> map2)
+        {
+            throw new LangException($"Function 'mapMerge' expects a map, but got '{GetValueType(mapObj2)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        var merged = new Dictionary<object, object>(map1.Count + map2.Count);
+
+        foreach (var kvp in map1)
+        {
+            merged[kvp.Key] = kvp.Value;
+        }
+
+        foreach (var kvp in map2)
+        {
+            merged[kvp.Key] = kvp.Value;
+        }
+
+        return merged;
     }
 }
