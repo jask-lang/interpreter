@@ -280,6 +280,7 @@ public partial class Interpreter
             "mapGetValues" => new() { "map" },
             "mapHasKey"    => new() { "map", "key" },
             "mapSize"      => new() { "map" },
+            "mapRemove"    => new() { "map", "key" },
 
             _ => throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath)
         };

@@ -10,7 +10,8 @@ public partial class Interpreter
         _internalFunctions["mapGetKeys"]   = CallInternalFunctionMapGetKeys;
         _internalFunctions["mapGetValues"] = CallInternalFunctionMapGetValues;
         _internalFunctions["mapHasKey"]    = CallInternalFunctionMapHasKey;
-        _internalFunctions["mapSize"]    = CallInternalFunctionMapSize;
+        _internalFunctions["mapSize"]      = CallInternalFunctionMapSize;
+        _internalFunctions["mapRemove"]    = CallInternalFunctionMapRemove;
     }
 
     private object? CallInternalFunctionMap(Expression.Call call)
@@ -182,5 +183,33 @@ public partial class Interpreter
         }
 
         return map.Keys.Count;
+    }
+
+    private object? CallInternalFunctionMapRemove(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "mapRemove");
+
+        object? mapObj = Evaluate(call.Arguments[0]);
+
+        if (mapObj is not Dictionary<object, object> map)
+        {
+            throw new LangException($"Function 'mapRemove' expects a map, but got '{GetValueType(mapObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? key = Evaluate(call.Arguments[1]);
+
+        if (key is null)
+        {
+            throw new LangException($"Function 'mapRemove' cannot use 'nil' as key", GetCallToken(call).Line, _filePath);
+        }
+
+        if (map.ContainsKey(key) == false)
+        {
+            throw new LangException($"Function 'mapRemove' cannot find key '{key}'", GetCallToken(call).Line, _filePath);
+        }
+
+        map.Remove(key);
+
+        return map;
     }
 }
