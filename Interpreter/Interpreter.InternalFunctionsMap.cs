@@ -12,6 +12,20 @@ public partial class Interpreter
         _internalFunctions["mapHasKey"]    = CallInternalFunctionMapHasKey;
         _internalFunctions["mapSize"]      = CallInternalFunctionMapSize;
         _internalFunctions["mapRemove"]    = CallInternalFunctionMapRemove;
+        _internalFunctions["mapMerge"]     = CallInternalFunctionMapMerge;
+    }
+
+    private Dictionary<object, object> copyMap(Dictionary<object, object> map)
+    {
+        var newMap = new Dictionary<object, object>(map.Count);
+
+        //  deep copy for every key-value pair
+        foreach (var kvp in map)
+        {
+            newMap[kvp.Key] = kvp.Value;
+        }
+
+        return newMap;
     }
 
     private object? CallInternalFunctionMap(Expression.Call call)
@@ -117,9 +131,10 @@ public partial class Interpreter
             throw new LangException($"Function 'mapSet' cannot use 'nil' as value", GetCallToken(call).Line, _filePath);
         }
 
-        map[key] = value;
+        var newMap = copyMap(map);
+        newMap[key] = value;
 
-        return map;
+        return newMap;
     }
 
     private object? CallInternalFunctionMapGetKeys(Expression.Call call)
@@ -208,9 +223,12 @@ public partial class Interpreter
             throw new LangException($"Function 'mapRemove' cannot find key '{key}'", GetCallToken(call).Line, _filePath);
         }
 
-        map.Remove(key);
+        var newMap = copyMap(map);
+        newMap.Remove(key);
 
-        return map;
+        return newMap;
+    }
+
     private object? CallInternalFunctionMapMerge(Expression.Call call)
     {
         CheckNumberOfArguments(call, 2, "mapMerge");
