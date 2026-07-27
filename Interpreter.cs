@@ -171,14 +171,34 @@ public partial class Interpreter
 
             case Statement.ForIn fi:
                 object? collectionObj = Evaluate(fi.Collection);
-                if (collectionObj is not List<object?> list)
+                IEnumerable<object?> iterable;
+
+                if (collectionObj is List<object?> list)
                 {
-                    throw new LangException($"'for...in' loop expects a list, but got '{GetValueType(collectionObj)}'", fi.Variable.Line, _filePath);
+                    iterable = list;
+                }
+                else if (collectionObj is Dictionary<object, object> map) 
+                {
+                    var mapList = new List<StructInstance>(map.Count);
+                    foreach (var ele in map)
+                    {
+                        mapList.Add(new StructInstance("MapEntry", new Dictionary<string, object?>
+                        {
+                            { "key", ele.Key },
+                            { "value", ele.Value }
+                        }));
+                    }
+
+                    iterable = mapList;
+                }
+                else
+                {
+                    throw new LangException($"'for...in' loop expects a list or a map, but got '{GetValueType(collectionObj)}'", fi.Variable.Line, _filePath);
                 }
 
                 try
                 {
-                    foreach (var item in list)
+                    foreach (var item in iterable)
                     {
                         CurrentEnvironment[fi.Variable.Lexeme] = item;
                         try
@@ -211,7 +231,7 @@ public partial class Interpreter
                 var structKey = s.Name.Lexeme;
 
                 // look into existing struct definitions and check for 'Result' since it is reserved for the interpreter
-                if (_structs.ContainsKey(structKey) || structKey == "Result")
+                if (_structs.ContainsKey(structKey) || structKey == "Result" || structKey == "MapEntry")
                 {
                     throw new LangException($"Struct '{s.Name.Lexeme}' is already defined", s.Name.Line, _filePath);
                 }
