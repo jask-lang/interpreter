@@ -191,6 +191,10 @@ public partial class Interpreter
 
                     iterable = mapList;
                 }
+                else if (collectionObj is string str)
+                {
+                    iterable = str.Select(c => (object?)c.ToString());
+                }
                 else
                 {
                     throw new LangException($"'for...in' loop expects a list or a map, but got '{GetValueType(collectionObj)}'", fi.Variable.Line, _filePath);
