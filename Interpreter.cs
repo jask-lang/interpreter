@@ -173,6 +173,9 @@ public partial class Interpreter
                 object? collectionObj = Evaluate(fi.Collection);
                 IEnumerable<object?> iterable;
 
+                string strItem = fi.Variable.Lexeme;
+                bool isItemValidOutOfScope = CurrentEnvironment.ContainsKey(strItem);
+
                 if (collectionObj is List<object?> list)
                 {
                     iterable = list;
@@ -204,7 +207,7 @@ public partial class Interpreter
                 {
                     foreach (var item in iterable)
                     {
-                        CurrentEnvironment[fi.Variable.Lexeme] = item;
+                        CurrentEnvironment[strItem] = item;
                         try
                         {
                             foreach (var s in fi.Body) Execute(s);
@@ -213,6 +216,12 @@ public partial class Interpreter
                     }
                 }
                 catch (BreakException) { }
+
+                if (isItemValidOutOfScope == false)
+                    {
+                        CurrentEnvironment.Remove(strItem);
+                    }
+
                 break;
 
             case Statement.Function f:
