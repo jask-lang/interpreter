@@ -1,11 +1,23 @@
 using System.Text;
+using System.Reflection;
 using JaskLang;
 
-const String JASK_VERSION = "0.0.1";
+const string JASK_VERSION = "0.0.1";
 
 static void printVersionMessage()
 {
-    Console.WriteLine($"jask lang interpreter {JASK_VERSION}");
+    Console.WriteLine($"jask lang interpreter {JASK_VERSION} (build {GetBuildDate()})");
+}
+
+static string GetBuildDate()
+{
+    var assembly = Assembly.GetExecutingAssembly();
+
+    var buildDateAttribute = assembly
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(attr => attr.Key == "BuildDate");
+
+    return buildDateAttribute?.Value ?? "Unknown";
 }
 
 ArgumentsParser argumentParser = new ArgumentsParser(args);
@@ -78,7 +90,7 @@ static void RunInteractiveMode(PermissionManager permissionManager)
 
     var interpreter = new Interpreter(permissionManager);
     List<string> history = new List<string>();
-    
+
     StringBuilder multiLineBuffer = new StringBuilder();
 
     var blockPairs = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -338,7 +350,7 @@ static void EnsureNewLineBeforeError()
     {
         if (Console.CursorLeft > 0)
         {
-            Console.Error.WriteLine(); 
+            Console.Error.WriteLine();
         }
     }
     catch (IOException)
