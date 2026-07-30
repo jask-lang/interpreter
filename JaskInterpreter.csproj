@@ -10,4 +10,8 @@
     <AssemblyName>jask</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)../jcore/*.jask" />
+  </ItemGroup>
+
 </Project>
