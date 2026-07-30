@@ -142,9 +142,22 @@ public partial class Interpreter
                 {
                     foreach (var s in i.ThenBranch) Execute(s);
                 }
-                else if (i.ElseBranch != null)
+                else
                 {
-                    foreach (var s in i.ElseBranch) Execute(s);
+                    bool matched = false;
+                    foreach (var e in i.ElsifBranches)
+                    {
+                        if (IsTruthy(Evaluate(e.Condition)))
+                        {
+                            foreach (var s in e.Body) Execute(s);
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched && i.ElseBranch != null)
+                    {
+                        foreach (var s in i.ElseBranch) Execute(s);
+                    }
                 }
                 break;
 

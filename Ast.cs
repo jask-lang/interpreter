@@ -37,7 +37,8 @@ public abstract record Statement
 
     public record StructUpdate(JaskLang.Expression Source, List<(Token Field, JaskLang.Expression Value)> Updates, Token Target) : Statement;
 
-    public record If(JaskLang.Expression Condition, List<Statement> ThenBranch, List<Statement>? ElseBranch) : Statement;
+    public record If(JaskLang.Expression Condition, List<Statement> ThenBranch, List<Statement.Elsif> ElsifBranches, List<Statement>? ElseBranch) : Statement;
+    public record Elsif(JaskLang.Expression Condition, List<Statement> Body) : Statement;
 
     public record While(JaskLang.Expression Condition, List<Statement> Body) : Statement;
 

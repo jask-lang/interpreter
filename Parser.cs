@@ -92,7 +92,22 @@ public class Parser(List<Token> tokens, string? filePath = null)
             thenBranch.Add(Statement());
         }
 
-        // optional else branch
+        // collect "else if" branches — "else" immediately followed by "if" is a chain, not an else block with nested if
+        var elsifBranches = new List<Statement.Elsif>();
+        while (Check(TokenType.Else) && CheckNext(TokenType.If))
+        {
+            Match(TokenType.Else);
+            Match(TokenType.If);
+            Expression elsifCondition = Expression();
+            var elsifBody = new List<Statement>();
+            while (Check(TokenType.Else) == false && Check(TokenType.EndIf) == false && IsAtEnd() == false)
+            {
+                elsifBody.Add(Statement());
+            }
+            elsifBranches.Add(new Statement.Elsif(elsifCondition, elsifBody));
+        }
+
+        // optional else branch (final else, not followed by "if")
         List<Statement>? elseBranch = null;
         if (Match(TokenType.Else))
         {
@@ -105,7 +120,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
 
         Consume(TokenType.EndIf, "Expected 'endif' at the end of the if statement");
 
-        return new Statement.If(condition, thenBranch, elseBranch);
+        return new Statement.If(condition, thenBranch, elsifBranches, elseBranch);
     }
 
     private Statement WhileStatement()
