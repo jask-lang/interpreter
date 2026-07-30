@@ -303,12 +303,6 @@ public partial class Interpreter
             case Statement.Use u:
                 object? value = Evaluate(u.Value);
 
-                // first, check permissions for reading files
-                if (_permissionManager.IsPermitted(Permission.FileRead) == false)
-                {
-                    throw new LangException("Missing permission 'read' for loading modules", u.Alias.Line, _filePath);
-                }
-
                 if (value is not string)
                 {
                     throw new LangException($"'use' statement expects a string as module path, but got '{GetValueType(value)}'");
@@ -319,6 +313,55 @@ public partial class Interpreter
                 if (modulePath.EndsWith(".jask") == false)
                 {
                     modulePath += ".jask";
+                }
+
+                if (char.IsUpper(u.Alias.Lexeme[0]) == true)
+                {
+                    throw new LangException($"Module alias '{u.Alias.Lexeme}' must start with a lowercase letter", u.Alias.Line, _filePath);
+                }
+
+                if (_modules.ContainsKey(u.Alias.Lexeme))
+                {
+                    throw new LangException($"Module alias '{u.Alias.Lexeme}' is already in use", u.Alias.Line, _filePath);
+                }
+
+                // try embedded jcore modules first
+                if (modulePath.StartsWith("jcore/"))
+                {
+                    string? embeddedSource = TryLoadEmbeddedModule(modulePath);
+                    if (embeddedSource != null)
+                    {
+                        if (_modulesLoading.Contains(modulePath))
+                        {
+                            throw new LangException($"Circular 'use' detected: module '{modulePath}' is already being loaded", u.Alias.Line, _filePath);
+                        }
+
+                        string virtualPath = $"[jcore]/{modulePath}";
+                        _modulesLoading.Add(virtualPath);
+                        try
+                        {
+                            var moduleInterpreter = new Interpreter(_modulesLoading, _baseDirectory, _processDirectory, $"jcore/{modulePath}", _permissionManager);
+                            var lexer = new Lexer(embeddedSource, false, $"jcore/{modulePath}");
+                            var tokens = lexer.ScanTokens();
+                            var parser = new Parser(tokens, $"jcore/{modulePath}");
+                            var moduleStatements = parser.Parse();
+                            moduleInterpreter.Interpret(moduleStatements);
+
+                            _modules[u.Alias.Lexeme] = moduleInterpreter;
+                        }
+                        finally
+                        {
+                            _modulesLoading.Remove(virtualPath);
+                        }
+
+                        break;
+                    }
+                }
+
+                // fall back to file system
+                if (_permissionManager.IsPermitted(Permission.FileRead) == false)
+                {
+                    throw new LangException("Missing permission 'read' for loading modules", u.Alias.Line, _filePath);
                 }
 
                 string fullPath = ResolveModulePath(modulePath);
@@ -336,16 +379,6 @@ public partial class Interpreter
                 if (_modulesLoading.Contains(fullPath))
                 {
                     throw new LangException($"Circular 'use' detected: module '{modulePath}' is already being loaded", u.Alias.Line, _filePath);
-                }
-
-                if (char.IsUpper(u.Alias.Lexeme[0]) == true)
-                {
-                    throw new LangException($"Module alias '{u.Alias.Lexeme}' must start with a lowercase letter", u.Alias.Line, _filePath);
-                }
-
-                if (_modules.ContainsKey(u.Alias.Lexeme))
-                {
-                    throw new LangException($"Module alias '{u.Alias.Lexeme}' is already in use", u.Alias.Line, _filePath);
                 }
 
                 _modulesLoading.Add(fullPath);
@@ -411,5 +444,21 @@ public partial class Interpreter
         // if not found anywhere, return the first candidate (relative to current script)
         // this allows the error message to be more informative
         return relativeToScriptPath;
+    }
+
+    /// <summary>
+    /// Tries to load a .jask module from embedded assembly resources (jcore).
+    /// Returns null if not found.
+    /// </summary>
+    private static string? TryLoadEmbeddedModule(string path)
+    {
+        string fileName = Path.GetFileName(path);
+        string resourceName = $"JaskInterpreter.{fileName}";
+
+        using Stream? stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+        if (stream == null) return null;
+
+        using StreamReader reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }
