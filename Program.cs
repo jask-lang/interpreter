@@ -23,8 +23,9 @@ static string GetBuildDate()
 ArgumentsParser argumentParser = new ArgumentsParser(args);
 PermissionManager permissionManager = new PermissionManager(argumentParser);
 
-// when are only printing the version and then exit the interpreter
-if (argumentParser.Has("--version"))
+// we are only printing the version and then exit the interpreter
+if (argumentParser.Has("--version") ||
+    argumentParser.Has("-v"))
 {
     printVersionMessage();
     return;
