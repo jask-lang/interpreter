@@ -19,24 +19,39 @@ public class ArgumentsParser
 
     public ArgumentsParser(IEnumerable<string> args)
     {
-        foreach (string arg in args)
+        var arguments = args.ToArray();
+        for (int i = 0; i < arguments.Length; i++)
         {
-            // jask supports --flag=value as well as --flag:value
-            int separatorIdx = arg.IndexOfAny(['=', ':']);
+            string arg = arguments[i];
 
+            // jask supports '--flag=value' and '--flag value'
+            int separatorIdx = arg.IndexOfAny(['=']);
+
+            // flag without value in one place (e.g --allow-stdout or --input example.jask)
             if (separatorIdx == -1)
             {
-                // flag without value (e.g --allow-stdout)
-                if (!_parameters.ContainsKey(arg))
+                if (arg.Equals("--input") || arg.Equals("-i"))
+                {
+                    string value = arguments[++i];
+                    if (!_parameters.TryGetValue(arg, out var list))
+                    {
+                        list = [];
+                        _parameters[arg] = list;
+                    }
+                    list.Add(value);
+                }
+                else if (_parameters.ContainsKey(arg) == false)
+                {
                     _parameters[arg] = [];
+                }
             }
             else
             {
-                // flag with value (e.g --allow-read="/a/sample/path/")
+                // flag with value in one place (e.g --allow-read="/a/sample/path/")
                 string key = arg[..separatorIdx];
                 string value = arg[(separatorIdx + 1)..];
 
-                if (!_parameters.TryGetValue(key, out var list))
+                if (_parameters.TryGetValue(key, out var list) == false)
                 {
                     list = [];
                     _parameters[key] = list;
@@ -72,10 +87,22 @@ public class PermissionManager
         }
 
         // parse simple flags
-        if (argumentParser.Has("--allow-stdout"))  Grant(Permission.Stdout);
-        if (argumentParser.Has("--allow-stdin"))   Grant(Permission.Stdin);
-        if (argumentParser.Has("--allow-network")) Grant(Permission.Network);
-        if (argumentParser.Has("--allow-trust"))   Grant(Permission.Trust);
+        if (argumentParser.Has("--allow-stdout") || argumentParser.Has("-ao"))
+        {
+            Grant(Permission.Stdout);
+        }
+        if (argumentParser.Has("--allow-stdin") || argumentParser.Has("-ai"))
+        {
+            Grant(Permission.Stdin);
+        }
+        if (argumentParser.Has("--allow-network") || argumentParser.Has("-an"))
+        {
+            Grant(Permission.Network);
+        }
+        if (argumentParser.Has("--allow-trust") || argumentParser.Has("-at"))
+        {
+            Grant(Permission.Trust);
+        }
 
         // parse multiple flags for file read
         if (argumentParser.Has("--allow-read"))
