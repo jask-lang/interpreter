@@ -9,6 +9,19 @@ static void printVersionMessage()
     Console.WriteLine($"jask lang interpreter {JASK_VERSION} (build {GetBuildDate()})");
 }
 
+static void printHelpMessage()
+{
+    printVersionMessage();
+
+    Console.WriteLine("jask [arguments] --input \"file.jask\"\n");
+    Console.WriteLine("Possible arguments:");
+    Console.WriteLine("--help           -h  : Prints this message and exits");
+    Console.WriteLine("--version        -v  : Prints the interpreters version and exits");
+    Console.WriteLine("--allow-stdout   -ao : Allows printing to stdout");
+    Console.WriteLine("--allow-stdin    -ai : Allows reading from stdin");
+    Console.WriteLine("--allow-trust    -at : Allows using trust()");
+}
+
 static string GetBuildDate()
 {
     var assembly = Assembly.GetExecutingAssembly();
@@ -31,6 +44,13 @@ if (argumentParser.Has("--version") ||
     return;
 }
 
+// we are only printing the help output and then exit the interpreter
+if (argumentParser.Has("--help") ||
+    argumentParser.Has("-h"))
+{
+    printHelpMessage();
+    return;
+} 
 
 // we are interpreting a file
 if (argumentParser.Has("--input") ||
