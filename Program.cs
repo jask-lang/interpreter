@@ -13,7 +13,7 @@ static void printHelpMessage()
 {
     printVersionMessage();
 
-    Console.WriteLine("jask [arguments] --input \"file.jask\"\n");
+    Console.WriteLine("jask [arguments] --input \"file.jask\"" + Environment.NewLine);
     Console.WriteLine("Possible arguments:");
     Console.WriteLine("--help           -h  : Prints this message and exits");
     Console.WriteLine("--version        -v  : Prints the interpreters version and exits");
