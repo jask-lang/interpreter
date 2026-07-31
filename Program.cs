@@ -33,7 +33,8 @@ if (argumentParser.Has("--version") ||
 
 
 // we are interpreting a file
-if (argumentParser.Has("--input"))
+if (argumentParser.Has("--input") ||
+    argumentParser.Has("-i"))
 {
     string file = argumentParser.GetValues(argumentParser.Has("--input") ? "--input" : "-i").ElementAt(0);
 
