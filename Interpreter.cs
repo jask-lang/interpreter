@@ -30,6 +30,9 @@ public partial class Interpreter
     // dictionary for functions: "name(type1,type2,...)" -> (parameters, body)
     private readonly Dictionary<string, (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> _functions = [];
 
+    // direct lookup for user-defined overloads by function name, avoiding a full scan on every call
+    private readonly Dictionary<string, List<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)>> _functionOverloads = [];
+
     // dictionary for struct definitions: name -> body statements
     private readonly Dictionary<string, List<Statement>> _structs = [];
 
@@ -250,7 +253,16 @@ public partial class Interpreter
                     throw new LangException($"Function '{f.Name.Lexeme}' must start with a lowercase letter", f.Name.Line, _filePath);
                 }
 
-                _functions[FunctionKey(f.Name.Lexeme, f.Params)] = (f.Params, f.Body);
+                _functions[functionKey] = (f.Params, f.Body);
+
+                if (_functionOverloads.TryGetValue(f.Name.Lexeme, out var overloads))
+                {
+                    overloads.Add((f.Params, f.Body));
+                }
+                else
+                {
+                    _functionOverloads[f.Name.Lexeme] = [(f.Params, f.Body)];
+                }
                 break;
 
             case Statement.Struct s:

@@ -52,9 +52,11 @@ public partial class Interpreter
 
         // arguments are expressions written in the callers scope, so evaluate them here first,
         // then hand the modules own interpreter already-evaluated values wrapped as literals
-        var evaluatedArgs = call.Arguments
-            .Select(a => (Expression)new Expression.Literal(Evaluate(a)))
-            .ToList();
+        var evaluatedArgs = new List<Expression>(call.Arguments.Count);
+        foreach (var arg in call.Arguments)
+        {
+            evaluatedArgs.Add(new Expression.Literal(Evaluate(arg)));
+        }
 
         var innerCall = new Expression.Call(new Expression.Variable(call.Name), evaluatedArgs);
         return module.EvaluateCall(innerCall);
@@ -69,9 +71,11 @@ public partial class Interpreter
                 call.ModuleAlias.Line, _filePath);
         }
 
-        var evaluatedArgs = call.Args
-            .Select(a => (a.ParamName, Value: (Expression)new Expression.Literal(Evaluate(a.Value))))
-            .ToList();
+        var evaluatedArgs = new List<(Token ParamName, Expression Value)>(call.Args.Count);
+        foreach (var arg in call.Args)
+        {
+            evaluatedArgs.Add((arg.ParamName, new Expression.Literal(Evaluate(arg.Value))));
+        }
 
         var innerCall = new Expression.NamedCall(call.Name, evaluatedArgs);
         return module.EvaluateNamedCall(innerCall);
@@ -88,7 +92,7 @@ public partial class Interpreter
         string funcName = funcExpr.Name.Lexeme;
 
         // check for user-defined overloads first (they take priority over internals)
-        bool hasUserOverload = _functions.Keys.Any(k => k.StartsWith(funcName + "("));
+        bool hasUserOverload = _functionOverloads.ContainsKey(funcName);
 
         // if no user overload exists, delegate to internal immediately (avoids double arg evaluation)
         if (!hasUserOverload && _internalFunctions.TryGetValue(funcName, out var internalFunc))
@@ -144,28 +148,13 @@ public partial class Interpreter
             }
         }
 
-        var overloads = _functions
-            .Where(kv => kv.Key.StartsWith(funcName + "("))
-            .Select(kv => kv.Value)
-            .ToList();
-
-        if (overloads.Count == 0)
+        if (_functionOverloads.TryGetValue(funcName, out var overloads) == false || overloads.Count == 0)
         {
             throw new LangException($"Unknown function '{funcName}'", funcExpr.Name.Line, _filePath);
         }
 
-        // pick best overload: required params = those without defaults
-        // match if argCount in [requiredParams, totalParams] and types compatible
-        var match = overloads
-            .Select(o => (o, required: o.Params.Count(p => p.Item3 == null)))
-            .Where(x => argValues.Count >= x.required && argValues.Count <= x.o.Params.Count)
-            .Where(x => x.o.Params.Zip(argValues, (p, v) => IsValueOfType(v, p.Type.Lexeme)).All(z => z))
-            .OrderByDescending(x => x.required)
-            .ThenBy(x => x.o.Params.Count(p => p.Type.Lexeme == "any"))
-            .Select(x => x.o)
-            .FirstOrDefault();
-
-        if (match == default)
+        var bestMatch = SelectBestOverload(overloads, argValues);
+        if (bestMatch == null)
         {
             // no user overload matched — fall back to internal if one exists
             if (_internalFunctions.TryGetValue(funcName, out var internalFunction))
@@ -182,7 +171,7 @@ public partial class Interpreter
             throw new LangException($"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name.Line, _filePath);
         }
 
-        var (parameters, body) = match;
+        var (parameters, body) = bestMatch.Value;
 
         var functionEnv = new Dictionary<string, object?>();
 
@@ -271,57 +260,47 @@ public partial class Interpreter
         }
 
         // find all overloads for this name
-        var overloads = _functions
-            .Where(kv => kv.Key.StartsWith(name + "("))
-            .Select(kv => kv.Value)
-            .ToList();
-
-        if (overloads.Count == 0)
+        if (_functionOverloads.TryGetValue(name, out var overloads) == false || overloads.Count == 0)
             throw new LangException($"Unknown function '{name}'", call.Name.Line, _filePath);
 
         // evaluate args up front so we can match on types too
-        var evaluatedArgs = call.Args
-            .Select(a => (a.ParamName, Value: Evaluate(a.Value)))
-            .ToList();
+        var evaluatedArgs = new List<(Token ParamName, object? Value)>(call.Args.Count);
+        foreach (var arg in call.Args)
+        {
+            evaluatedArgs.Add((arg.ParamName, Evaluate(arg.Value)));
+        }
 
-        var suppliedParamNames = call.Args.Select(a => a.ParamName.Lexeme).ToHashSet();
+        var suppliedParamNames = new HashSet<string>(call.Args.Count);
+        foreach (var arg in call.Args)
+        {
+            suppliedParamNames.Add(arg.ParamName.Lexeme);
+        }
 
-        // find overload: supplied names must be a subset of param names,
-        // and at least all required (non-default) params must be supplied
-        var match = overloads
-            .Select(o => (o, required: o.Params.Count(p => p.Item3 == null)))
-            .Where(x => call.Args.Count >= x.required && call.Args.Count <= x.o.Params.Count)
-            .Where(x => x.o.Params.Select(p => p.Name.Lexeme).ToHashSet().IsSupersetOf(suppliedParamNames))
-            .Where(x => x.o.Params.All(p =>
-            {
-                if (!evaluatedArgs.Any(a => a.ParamName.Lexeme == p.Name.Lexeme))
-                {
-                    // missing arg is OK only if default exists
-                    return p.Item3 != null;
-                }
-
-                var arg = evaluatedArgs.First(a => a.ParamName.Lexeme == p.Name.Lexeme);
-                return IsValueOfType(arg.Value, p.Type.Lexeme);
-            }))
-            .OrderByDescending(x => x.required)
-            .ThenBy(x => x.o.Params.Count(p => p.Type.Lexeme == "any"))
-            .Select(x => x.o)
-            .FirstOrDefault();
-
-        if (match == default)
+        var match = SelectBestNamedOverload(overloads, evaluatedArgs, suppliedParamNames);
+        if (match == null)
         {
             throw new LangException($"Function '{name}' has no overload matching named parameters ({string.Join(", ", suppliedParamNames)})", call.Name.Line, _filePath);
         }
 
         // bind in parameter declaration order, filling defaults for omitted params
         var functionEnv = new Dictionary<string, object?>();
-        foreach (var param in match.Params)
+        foreach (var param in match.Value.Params)
         {
-            var supplied = evaluatedArgs.FirstOrDefault(a => a.ParamName.Lexeme == param.Name.Lexeme);
-            var found = !supplied.Equals(default);
+            var found = false;
+            object? suppliedValue = null;
+            foreach (var supplied in evaluatedArgs)
+            {
+                if (supplied.ParamName.Lexeme == param.Name.Lexeme)
+                {
+                    found = true;
+                    suppliedValue = supplied.Value;
+                    break;
+                }
+            }
+
             if (found)
             {
-                functionEnv[param.Name.Lexeme] = supplied.Value;
+                functionEnv[param.Name.Lexeme] = suppliedValue;
             }
             else if (param.Item3 != null)
             {
@@ -332,7 +311,7 @@ public partial class Interpreter
         _scopes.Push(functionEnv);
         try
         {
-            foreach (var stmt in match.Body)
+            foreach (var stmt in match.Value.Body)
             {
                 Execute(stmt);
             }
@@ -347,6 +326,157 @@ public partial class Interpreter
         }
 
         return null;
+    }
+
+    private (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? SelectBestOverload(
+        IReadOnlyList<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> overloads,
+        IReadOnlyList<object?> argValues)
+    {
+        (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? bestMatch = null;
+        int bestRequired = -1;
+        int bestAnyCount = int.MaxValue;
+
+        foreach (var overload in overloads)
+        {
+            int required = 0;
+            int paramCount = overload.Params.Count;
+            if (argValues.Count < 0 || argValues.Count > paramCount)
+            {
+                continue;
+            }
+
+            int providedArgCount = argValues.Count;
+            bool matches = true;
+            for (int i = 0; i < providedArgCount; i++)
+            {
+                var parameter = overload.Params[i];
+                if (parameter.Item3 == null)
+                {
+                    required++;
+                }
+
+                if (!IsValueOfType(argValues[i], parameter.Type.Lexeme))
+                {
+                    matches = false;
+                    break;
+                }
+            }
+
+            if (!matches)
+            {
+                continue;
+            }
+
+            if (argValues.Count < required)
+            {
+                continue;
+            }
+
+            int anyCount = 0;
+            for (int i = 0; i < paramCount; i++)
+            {
+                if (overload.Params[i].Type.Lexeme == "any")
+                {
+                    anyCount++;
+                }
+            }
+
+            if (required > bestRequired || (required == bestRequired && anyCount < bestAnyCount))
+            {
+                bestMatch = overload;
+                bestRequired = required;
+                bestAnyCount = anyCount;
+            }
+        }
+
+        return bestMatch;
+    }
+
+    private (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? SelectBestNamedOverload(
+        IReadOnlyList<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> overloads,
+        IReadOnlyList<(Token ParamName, object? Value)> evaluatedArgs,
+        HashSet<string> suppliedParamNames)
+    {
+        (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? bestMatch = null;
+        int bestRequired = -1;
+        int bestAnyCount = int.MaxValue;
+
+        foreach (var overload in overloads)
+        {
+            int required = 0;
+            int paramCount = overload.Params.Count;
+            if (evaluatedArgs.Count < 0 || evaluatedArgs.Count > paramCount)
+            {
+                continue;
+            }
+
+            bool hasValidNames = true;
+            var parameterNames = new HashSet<string>(paramCount);
+            for (int i = 0; i < paramCount; i++)
+            {
+                var parameter = overload.Params[i];
+                if (parameter.Item3 == null)
+                {
+                    required++;
+                }
+                parameterNames.Add(parameter.Name.Lexeme);
+            }
+
+            if (!parameterNames.IsSupersetOf(suppliedParamNames))
+            {
+                continue;
+            }
+
+            foreach (var parameter in overload.Params)
+            {
+                bool found = false;
+                foreach (var supplied in evaluatedArgs)
+                {
+                    if (supplied.ParamName.Lexeme == parameter.Name.Lexeme)
+                    {
+                        found = true;
+                        if (!IsValueOfType(supplied.Value, parameter.Type.Lexeme))
+                        {
+                            hasValidNames = false;
+                            break;
+                        }
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    if (parameter.Item3 == null)
+                    {
+                        hasValidNames = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasValidNames || evaluatedArgs.Count < required)
+            {
+                continue;
+            }
+
+            int anyCount = 0;
+            for (int i = 0; i < paramCount; i++)
+            {
+                if (overload.Params[i].Type.Lexeme == "any")
+                {
+                    anyCount++;
+                }
+            }
+
+            if (required > bestRequired || (required == bestRequired && anyCount < bestAnyCount))
+            {
+                bestMatch = overload;
+                bestRequired = required;
+                bestAnyCount = anyCount;
+            }
+        }
+
+        return bestMatch;
     }
 
     private object? EvaluateStructCall(Expression.StructCall call)
