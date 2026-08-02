@@ -156,12 +156,32 @@ public class Lexer
 
     private void ScanString()
     {
-        while (Peek() != '"' && IsAtEnd() == false)
+        while (IsAtEnd() == false)
         {
-            if (Peek() == '\n')
+            char c = Peek();
+
+            if (c == '\\')
+            {
+                Advance();
+                if (IsAtEnd())
+                {
+                    throw new LangException("Unclosed string.", _line, _filePath);
+                }
+
+                Advance();
+                continue;
+            }
+
+            if (c == '\n')
             {
                 _line++;
             }
+
+            if (c == '"')
+            {
+                break;
+            }
+
             Advance();
         }
 
