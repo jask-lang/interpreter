@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace JaskLang;
 
 public enum ResultType : uint
@@ -19,8 +21,8 @@ public partial class Interpreter
 {
     private void initInternalFunctionsTrustEngine()
     {
-        _internalFunctions["trust"]     = CallInternalFunctionTrust;
-        _internalFunctions["verify"]    = CallInternalFunctionVerify;
+        _internalFunctions["trust"]   = CallInternalFunctionTrust;
+        _internalFunctions["verify"]  = CallInternalFunctionVerify;
         _internalFunctions["untrust"] = CallInternalFunctionUntrust;
     }
 
@@ -79,9 +81,64 @@ public partial class Interpreter
                 if (uv.Value.ToString() == "true")  return createStructInstanceFromResult(ResultType.OK, true);
                 if (uv.Value.ToString() == "false") return createStructInstanceFromResult(ResultType.OK, false);
                 break;
+
+            case "json":
+                if (uv.Value is not string jsonText)
+                {
+                    return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' with pattern '{pattern}'");
+                }
+
+                try
+                {
+                    using JsonDocument document = JsonDocument.Parse(jsonText);
+                    object parsedValue = ConvertJsonElement(document.RootElement);
+                    return createStructInstanceFromResult(ResultType.OK, parsedValue);
+                }
+                catch (JsonException)
+                {
+                    return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' with pattern '{pattern}'");
+                }
         }
 
         return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Unknown verify pattern '{pattern}' for value {uv.Value}");
+    }
+
+    private object ConvertJsonElement(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => ConvertJsonObject(element),
+            JsonValueKind.Array => ConvertJsonArray(element),
+            JsonValueKind.String => element.GetString()!,
+            JsonValueKind.Number when element.TryGetInt64(out long intValue) => intValue,
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null!,
+            _ => null!
+        };
+    }
+
+    private Dictionary<object, object> ConvertJsonObject(JsonElement element)
+    {
+        var map = new Dictionary<object, object>(element.EnumerateObject().Count());
+        foreach (var property in element.EnumerateObject())
+        {
+            map[property.Name] = ConvertJsonElement(property.Value) ?? null!;
+        }
+
+        return map;
+    }
+
+    private List<object?> ConvertJsonArray(JsonElement element)
+    {
+        var list = new List<object?>(element.GetArrayLength());
+        foreach (var item in element.EnumerateArray())
+        {
+            list.Add(ConvertJsonElement(item));
+        }
+
+        return list;
     }
 
     private object CallInternalFunctionUntrust(Expression.Call call)
