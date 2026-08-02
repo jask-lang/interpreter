@@ -110,8 +110,31 @@ static void RunInteractiveMode(PermissionManager permissionManager)
     printVersionMessage();
     Console.WriteLine("Use arrow keys for history, type 'exit' when you are done.");
 
+    // .jask_history will be stored in the users home dir
+    string homePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    string historyFilePath = Path.Combine(homePath, ".jask_history");
+    bool writeToHistory = false;
+
+    if (File.Exists(historyFilePath) == false)
+    {
+        File.Create(historyFilePath).Close();
+    }
+
+    string[] historyContent = [];
+
+    try
+    {
+        historyContent = File.ReadAllLines(historyFilePath);
+        writeToHistory = true;
+    }
+    catch
+    {
+        // something went wrong so we skip trying to write to the history file further in the code
+        writeToHistory = false;
+    }
+
     var interpreter = new Interpreter(permissionManager);
-    List<string> history = new List<string>();
+    List<string> history = historyContent.ToList();
 
     StringBuilder multiLineBuffer = new StringBuilder();
 
@@ -156,6 +179,23 @@ static void RunInteractiveMode(PermissionManager permissionManager)
         if (history.Count == 0 || history[history.Count - 1] != line)
         {
             history.Add(line);
+
+            try
+            {
+                if (writeToHistory == true)
+                {
+                    if (history.Count() > 100)
+                    {
+                        history.RemoveAt(0);
+                        File.WriteAllLines(historyFilePath, history);
+                    }
+                    else
+                    {
+                        File.AppendAllText(historyFilePath, line + Environment.NewLine);
+                    }
+                }
+            }
+            catch { }
         }
 
         var keywordsInLine = FindKeywordsInOrderOutsideQuotes(line, allKeywords);
