@@ -25,4 +25,14 @@ public class StructInstance
         var fields = string.Join(", ", Fields.Select(kv => $"{kv.Key}: {Interpreter.Stringify(kv.Value)}"));
         return $"{TypeName} {{ {fields} }}";
     }
+
+    public List<object?> getFieldNames()
+    {
+        List<object?> fieldNames = new List<object?>();
+        foreach (var field in Fields)
+        {
+            fieldNames.Add(field.Key);
+        }
+        return fieldNames;
+    }
 }

@@ -283,6 +283,8 @@ public partial class Interpreter
             "mapRemove"    => new() { "map", "key" },
             "mapMerge"     => new() { "map1", "map2" },
 
+            "getFields" => new() { "struct" },
+            "hasField"  => new() { "struct", "field" },
             _ => throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath)
         };
     }

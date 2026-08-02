@@ -43,6 +43,9 @@ public partial class Interpreter
         // trust engine
         initInternalFunctionsTrustEngine();
 
+        // struct functions
+        initInternalFunctionsStruct();
+
         // IO functions
         _internalFunctions["readInput"]  = CallInternalFunctionReadInput;
         _internalFunctions["readFile"]   = CallInternalFunctionReadFile;
