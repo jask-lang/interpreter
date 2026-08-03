@@ -52,7 +52,7 @@ public enum TokenType
     Colon,
     ColonColon,
     Comma,
-    Arrow,
+    Dot,
     Assign,
 
     // comparison operators

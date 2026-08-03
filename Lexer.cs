@@ -70,12 +70,10 @@ public class Lexer
             case ':':
                 AddToken(Match(':') ? TokenType.ColonColon : TokenType.Colon);
                 break;
+            case '.': AddToken(TokenType.Dot); break;
             case ',': AddToken(TokenType.Comma); break;
             case '+': AddToken(TokenType.Plus); break;
-            case '-':
-                if (Match('>')) AddToken(TokenType.Arrow);
-                else AddToken(TokenType.Minus);
-                break;
+            case '-':AddToken(TokenType.Minus); break;
             case '*': AddToken(TokenType.Star); break;
             case '%': AddToken(TokenType.Modulo); break;
             case '/': AddToken(TokenType.Slash); break;

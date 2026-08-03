@@ -428,10 +428,10 @@ public class Parser(List<Token> tokens, string? filePath = null)
             }
         }
 
-        // handle member access operator on any expression: expr->field
-        while (Match(TokenType.Arrow))
+        // handle member access operator on any expression: expr.field
+        while (Match(TokenType.Dot))
         {
-            Token member = Consume(TokenType.Identifier, "Expected a member name after '->'");
+            Token member = Consume(TokenType.Identifier, "Expected a member name after '.'");
             expr = new Expression.MemberAccess(expr, member);
         }
 
