@@ -97,13 +97,12 @@ public partial class Interpreter
         try
         {
             File.WriteAllText(path, content);
+            return createStructInstanceFromResult(ResultType.OK, null, null);
         }
         catch
         {
-            throw new LangException($"Writing file at '{path}' failed", GetCallToken(call).Line, _filePath);
+            return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Writing file at '{path}' failed");
         }
-
-        return null;
     }
 
     private object? CallInternalFunctionFileExists(Expression.Call call)
