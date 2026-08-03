@@ -186,12 +186,12 @@ public class Parser(List<Token> tokens, string? filePath = null)
         Consume(TokenType.RParen, "Expected ')' after parameters");
 
         var body = new List<Statement>();
-        while (Check(TokenType.End) == false && IsAtEnd() == false)
+        while (Check(TokenType.EndFunction) == false && IsAtEnd() == false)
         {
             body.Add(Statement());
         }
 
-        Consume(TokenType.End, "Expected 'end' at the end of the function");
+        Consume(TokenType.EndFunction, "Expected 'endfunction' at the end of the function");
 
         return new Statement.Function(name, parameters, body);
     }
@@ -224,13 +224,13 @@ public class Parser(List<Token> tokens, string? filePath = null)
     {
         // return [expression]
         Expression? value = null;
-        if (Check(TokenType.End)      == false &&
-            Check(TokenType.EndIf)    == false &&
-            Check(TokenType.EndWhile) == false && 
-            Check(TokenType.EndFor)   == false &&
-            Check(TokenType.Else)     == false &&
-            Check(TokenType.Break)    == false &&
-            IsAtEnd()                 == false)
+        if (Check(TokenType.EndFunction) == false &&
+            Check(TokenType.EndIf)       == false &&
+            Check(TokenType.EndWhile)    == false && 
+            Check(TokenType.EndFor)      == false &&
+            Check(TokenType.Else)        == false &&
+            Check(TokenType.Break)       == false &&
+            IsAtEnd()                    == false)
         {
             value = Expression();
         }

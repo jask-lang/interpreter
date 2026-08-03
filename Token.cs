@@ -29,7 +29,7 @@ public enum TokenType
     Function,
     Use,
     As,
-    End,
+    EndFunction,
     Return,
     And,
     Or,
