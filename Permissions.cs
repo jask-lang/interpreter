@@ -105,7 +105,7 @@ public class PermissionManager
         }
 
         // parse multiple flags for file read
-        if (argumentParser.Has("--allow-read"))
+        if (argumentParser.Has("--allow-read") || argumentParser.Has("-ar"))
         {
             Grant(Permission.FileRead);
             foreach (var path in argumentParser.GetValues("--allow-read"))
@@ -115,13 +115,27 @@ public class PermissionManager
                     AddNormalizedPath(_allowedReadPaths, path);
                 }
             }
+            foreach (var path in argumentParser.GetValues("-ar"))
+            {
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    AddNormalizedPath(_allowedReadPaths, path);
+                }
+            }
         }
 
         // parse multiple flags for file write
-        if (argumentParser.Has("--allow-write"))
+        if (argumentParser.Has("--allow-write") || argumentParser.Has("-aw"))
         {
             Grant(Permission.FileWrite);
             foreach (var path in argumentParser.GetValues("--allow-write"))
+            {
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    AddNormalizedPath(_allowedWritePaths, path);
+                }
+            }
+            foreach (var path in argumentParser.GetValues("-aw"))
             {
                 if (!string.IsNullOrWhiteSpace(path))
                 {

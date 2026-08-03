@@ -20,6 +20,8 @@ static void printHelpMessage()
     Console.WriteLine("--allow-stdout   -ao : Allows printing to stdout");
     Console.WriteLine("--allow-stdin    -ai : Allows reading from stdin");
     Console.WriteLine("--allow-trust    -at : Allows using trust()");
+    Console.WriteLine("--allow-read     -ar : Allows reading files. Can be specified multiple times for different paths or files");
+    Console.WriteLine("--allow-write    -aw : Allows writing files. Can be specified multiple times for different paths or files");
 }
 
 static string GetBuildDate()
