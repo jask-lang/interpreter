@@ -7,6 +7,7 @@ public partial class Interpreter
         _internalFunctions["readInput"]  = CallInternalFunctionReadInput;
         _internalFunctions["readFile"]   = CallInternalFunctionReadFile;
         _internalFunctions["writeFile"]  = CallInternalFunctionWriteFile;
+        _internalFunctions["fileExists"] = CallInternalFunctionFileExists;
     }
 
     private object? CallInternalFunctionReadInput(Expression.Call call)
@@ -103,5 +104,28 @@ public partial class Interpreter
         }
 
         return null;
+    }
+
+    private object? CallInternalFunctionFileExists(Expression.Call call)
+    {
+        if (_permissionManager.IsPermitted(Permission.FileRead) == false)
+        {
+            throw new LangException($"Missing permission 'read' for function 'fileExists'", GetCallToken(call).Line, _filePath);
+        }
+
+        CheckNumberOfArguments(call, 1, "fileExists");
+
+        object? pathArg = Evaluate(call.Arguments[0]);
+        if (pathArg is not string path)
+        {
+            throw new LangException($"Function 'fileExists' expects a string argument, but got '{GetValueType(pathArg)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        if (_permissionManager.IsPathPermitted(Permission.FileRead, path) == false)
+        {
+            throw new LangException($"Missing permission 'read' on '{path}' for function 'fileExists'", GetCallToken(call).Line, _filePath);
+        }
+
+        return File.Exists(path);
     }
 }
