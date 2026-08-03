@@ -60,11 +60,11 @@ public partial class Interpreter
         try
         {
             string content = File.ReadAllText(path);
-            return new UntrustedValue(content);
+            return createStructInstanceFromResult(ResultType.OK, new UntrustedValue(content), null);
         }
         catch
         {
-            throw new LangException($"Reading file at '{path}' failed", GetCallToken(call).Line, _filePath);
+            return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Reading file at '{path}' failed");
         }
     }
 
