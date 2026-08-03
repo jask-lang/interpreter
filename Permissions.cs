@@ -30,7 +30,9 @@ public class ArgumentsParser
             // flag without value in one place (e.g --allow-stdout or --input example.jask)
             if (separatorIdx == -1)
             {
-                if (arg.Equals("--input") || arg.Equals("-i"))
+                if (arg.Equals("--input") || arg.Equals("-i") ||
+                    arg.Equals("--allow-read") || arg.Equals("-ar") ||
+                    arg.Equals("--allow-write") || arg.Equals("-aw"))
                 {
                     string value = arguments[++i];
                     if (!_parameters.TryGetValue(arg, out var list))
