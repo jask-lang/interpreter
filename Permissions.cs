@@ -35,12 +35,22 @@ public class ArgumentsParser
                     arg.Equals("--allow-write") || arg.Equals("-aw"))
                 {
                     string value = arguments[++i];
-                    if (!_parameters.TryGetValue(arg, out var list))
+
+                    if (value.StartsWith("-") == true)
+                    {
+                        // the value is just another arg, so we are skipping
+                        _parameters[arg] = [];
+                        --i;
+                        continue;
+                    }
+
+                    if (_parameters.TryGetValue(arg, out var list) == false)
                     {
                         list = [];
+                        list.Add(value);
                         _parameters[arg] = list;
                     }
-                    list.Add(value);
+                    
                 }
                 else if (_parameters.ContainsKey(arg) == false)
                 {
@@ -56,9 +66,9 @@ public class ArgumentsParser
                 if (_parameters.TryGetValue(key, out var list) == false)
                 {
                     list = [];
+                    list.Add(value);
                     _parameters[key] = list;
                 }
-                list.Add(value);
             }
         }
     }
