@@ -47,10 +47,10 @@ public class ArgumentsParser
                     if (_parameters.TryGetValue(arg, out var list) == false)
                     {
                         list = [];
-                        list.Add(value);
+                        
                         _parameters[arg] = list;
                     }
-                    
+                    list.Add(value);
                 }
                 else if (_parameters.ContainsKey(arg) == false)
                 {
@@ -66,9 +66,10 @@ public class ArgumentsParser
                 if (_parameters.TryGetValue(key, out var list) == false)
                 {
                     list = [];
-                    list.Add(value);
+                    
                     _parameters[key] = list;
                 }
+                list.Add(value);
             }
         }
     }
