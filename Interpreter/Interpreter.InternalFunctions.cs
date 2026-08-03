@@ -47,9 +47,7 @@ public partial class Interpreter
         initInternalFunctionsStruct();
 
         // IO functions
-        _internalFunctions["readInput"]  = CallInternalFunctionReadInput;
-        _internalFunctions["readFile"]   = CallInternalFunctionReadFile;
-        _internalFunctions["writeFile"]  = CallInternalFunctionWriteFile;
+        initInternalFunctionsIO();
     }
 
     private Token GetCallToken(Expression.Call call) => ((Expression.Variable)call.Callee).Name;
@@ -212,102 +210,6 @@ public partial class Interpreter
         CheckNumberOfArguments(call, 0, "clock");
 
         return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
-    }
-
-    private object? CallInternalFunctionReadInput(Expression.Call call)
-    {
-        if (_permissionManager.IsPermitted(Permission.Stdin) == false)
-        {
-            throw new LangException($"Missing permission 'stdin' for function 'readInput'", GetCallToken(call).Line, _filePath);
-        }
-
-        if (call.Arguments.Count > 1)
-        {
-            throw new LangException($"Function 'readInput' expects 0 or 1 argument, but got {call.Arguments.Count}", GetCallToken(call).Line, _filePath);
-        }
-
-        // if there's one argument, print it as a prompt
-        if (call.Arguments.Count == 1)
-        {
-            object? promptValue = Evaluate(call.Arguments[0]);
-            Console.Write(Stringify(promptValue));
-        }
-
-        return new UntrustedValue(Console.ReadLine() ?? null);
-    }
-
-    private object? CallInternalFunctionReadFile(Expression.Call call)
-    {
-        if (_permissionManager.IsPermitted(Permission.FileRead) == false)
-        {
-            throw new LangException($"Missing permission 'read' for function 'readFile'", GetCallToken(call).Line, _filePath);
-        }
-
-        CheckNumberOfArguments(call, 1, "readFile");
-
-        object? pathArg = Evaluate(call.Arguments[0]);
-        if (pathArg is not string path)
-        {
-            throw new LangException($"Function 'readFile' expects a string argument, but got '{GetValueType(pathArg)}'", GetCallToken(call).Line, _filePath);
-        }
-
-        if (_permissionManager.IsPathPermitted(Permission.FileRead, path) == false)
-        {
-            throw new LangException($"Missing permission 'read' on '{path}' for function 'readFile'", GetCallToken(call).Line, _filePath);
-        }
-
-        if (File.Exists(path) == false)
-        {
-            throw new LangException($"File at path '{path}' cannot be found", GetCallToken(call).Line, _filePath);
-        }
-
-        try
-        {
-            string content = File.ReadAllText(path);
-            return new UntrustedValue(content);
-        }
-        catch
-        {
-            throw new LangException($"Reading file at '{path}' failed", GetCallToken(call).Line, _filePath);
-        }
-    }
-
-    private object? CallInternalFunctionWriteFile(Expression.Call call)
-    {
-        if (_permissionManager.IsPermitted(Permission.FileWrite) == false)
-        {
-            throw new LangException($"Missing permission 'write' for function 'writeFile'", GetCallToken(call).Line, _filePath);
-        }
-
-        CheckNumberOfArguments(call, 2, "writeFile");
-
-        object? pathArg = Evaluate(call.Arguments[0]);
-        if (pathArg is not string path)
-        {
-            throw new LangException($"Function 'writeFile' expects a string argument for path, but got '{GetValueType(pathArg)}'", GetCallToken(call).Line, _filePath);
-        }
-
-        if (_permissionManager.IsPathPermitted(Permission.FileWrite, path) == false)
-        {
-            throw new LangException($"Missing permission 'write' on '{path}' for function 'writeFile'", GetCallToken(call).Line, _filePath);
-        }
-
-        object? contentArg = Evaluate(call.Arguments[1]);
-        if (contentArg is not string content)
-        {
-            throw new LangException($"Function 'writeFile' expects a string argument for content, but got '{GetValueType(contentArg)}'", GetCallToken(call).Line, _filePath);
-        }
-
-        try
-        {
-            File.WriteAllText(path, content);
-        }
-        catch
-        {
-            throw new LangException($"Writing file at '{path}' failed", GetCallToken(call).Line, _filePath);
-        }
-
-        return null;
     }
 
     private object? CallInternalFunctionExit(Expression.Call call)
