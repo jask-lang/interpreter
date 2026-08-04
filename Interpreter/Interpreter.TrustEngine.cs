@@ -143,12 +143,12 @@ public partial class Interpreter
 
     private object CallInternalFunctionUntrust(Expression.Call call)
     {
-        CheckNumberOfArguments(call, 1, "untrusted");
+        CheckNumberOfArguments(call, 1, "untrust");
 
         object? valueObj = Evaluate(call.Arguments[0]);
         if (valueObj is UntrustedValue)
         {
-            throw new LangException($"Function 'untrusted' expects a value but got '{GetValueType(valueObj)}'", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'untrust' expects a value but got '{GetValueType(valueObj)}'", GetCallToken(call).Line, _filePath);
         }
 
         return new UntrustedValue(valueObj);
