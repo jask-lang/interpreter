@@ -34,6 +34,13 @@ public class ArgumentsParser
                     arg.Equals("--allow-read") || arg.Equals("-ar") ||
                     arg.Equals("--allow-write") || arg.Equals("-aw"))
                 {
+                    // prevents us from parsing an argument that is not there
+                    // add the last arg to the list and stop parsing
+                    if (i+1 > arguments.Length - 1)
+                    {
+                        _parameters[arg] = [];
+                        return;
+                    }
                     string value = arguments[++i];
 
                     if (value.StartsWith("-") == true)
@@ -47,7 +54,6 @@ public class ArgumentsParser
                     if (_parameters.TryGetValue(arg, out var list) == false)
                     {
                         list = [];
-                        
                         _parameters[arg] = list;
                     }
                     list.Add(value);
@@ -66,7 +72,6 @@ public class ArgumentsParser
                 if (_parameters.TryGetValue(key, out var list) == false)
                 {
                     list = [];
-                    
                     _parameters[key] = list;
                 }
                 list.Add(value);
