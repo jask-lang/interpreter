@@ -18,6 +18,8 @@ public partial class Interpreter
             Expression.StructCall  sc => EvaluateStructCall(sc),
             Expression.MemberAccess m => EvaluateMemberAccess(m),
             Expression.MapLiteral   ml => EvaluateMapLiteral(ml),
+            Expression.MapIndex     mi => EvaluateMapIndex(mi),
+            Expression.ListLiteral  ll => EvaluateListLiteral(ll),
             _ => throw new LangException($"Unknown expression: {expression}")
         };
     }
@@ -671,5 +673,56 @@ public partial class Interpreter
         }
 
         return map;
+    }
+
+    private object? EvaluateMapIndex(Expression.MapIndex mi)
+    {
+        object? target = Evaluate(mi.Map);
+        object? keyObj = Evaluate(mi.Key);
+
+        if (target is Dictionary<object, object> map)
+        {
+            if (keyObj is null)
+            {
+                throw new LangException($"Cannot use 'nil' as map index key", mi.Bracket.Line, _filePath);
+            }
+
+            if (!map.TryGetValue(keyObj, out var value))
+            {
+                throw new LangException($"Map does not contain key '{Stringify(keyObj)}'", mi.Bracket.Line, _filePath);
+            }
+
+            return value;
+        }
+
+        if (target is List<object?> list)
+        {
+            if (keyObj is not double index)
+            {
+                throw new LangException($"List index must be a number, but got '{GetValueType(keyObj)}'", mi.Bracket.Line, _filePath);
+            }
+
+            int intIndex = (int)index;
+            if (intIndex < 0 || intIndex >= list.Count)
+            {
+                throw new LangException($"List index {intIndex} out of range (list has {list.Count} elements)", mi.Bracket.Line, _filePath);
+            }
+
+            return list[intIndex];
+        }
+
+        throw new LangException($"Cannot index a '{GetValueType(target)}' with brackets", mi.Bracket.Line, _filePath);
+    }
+
+    private object? EvaluateListLiteral(Expression.ListLiteral ll)
+    {
+        var list = new List<object?>(ll.Elements.Count);
+
+        foreach (var elementExpr in ll.Elements)
+        {
+            list.Add(Evaluate(elementExpr));
+        }
+
+        return list;
     }
 }

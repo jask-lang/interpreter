@@ -70,6 +70,8 @@ public class Lexer
             case '.': AddToken(TokenType.Dot);      break;
             case '{': AddToken(TokenType.LBracket); break;
             case '}': AddToken(TokenType.RBracket); break;
+            case '[': AddToken(TokenType.LSquare); break;
+            case ']': AddToken(TokenType.RSquare); break;
             case ',': AddToken(TokenType.Comma);    break;
             case '+': AddToken(TokenType.Plus);     break;
             case '-': AddToken(TokenType.Minus);    break;

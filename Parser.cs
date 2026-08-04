@@ -428,6 +428,15 @@ public class Parser(List<Token> tokens, string? filePath = null)
             }
         }
 
+        // handle map index operator on any expression: map[key]
+        while (Match(TokenType.LSquare))
+        {
+            Token bracket = Previous();
+            Expression key = Expression();
+            Consume(TokenType.RSquare, "Expected ']' after map index key");
+            expr = new Expression.MapIndex(expr, bracket, key);
+        }
+
         // handle member access operator on any expression: expr.field
         while (Match(TokenType.Dot))
         {
@@ -483,6 +492,24 @@ public class Parser(List<Token> tokens, string? filePath = null)
             Consume(TokenType.RBracket, "Expected '}' after map literal");
             Token lBracket = Previous(); // the '{' token
             return new Expression.MapLiteral(lBracket, entries);
+        }
+
+        if (Match(TokenType.LSquare))
+        {
+            var elements = new List<Expression>();
+
+            if (Check(TokenType.RSquare) == false)
+            {
+                do
+                {
+                    elements.Add(Expression());
+                }
+                while (Match(TokenType.Comma));
+            }
+
+            Consume(TokenType.RSquare, "Expected ']' after list literal");
+            Token lSquare = Previous(); // the '[' token
+            return new Expression.ListLiteral(lSquare, elements);
         }
 
         throw Error(Peek(), "Expected an expression");

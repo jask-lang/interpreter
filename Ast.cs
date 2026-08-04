@@ -26,6 +26,10 @@ public abstract record Expression
     public record MemberAccess(Expression Struct, Token Member) : Expression;
 
     public record MapLiteral(Token LBracket, List<(Token Key, JaskLang.Expression Value)> Entries) : Expression;
+
+    public record MapIndex(Expression Map, Token Bracket, Expression Key) : Expression;
+
+    public record ListLiteral(Token LSquare, List<JaskLang.Expression> Elements) : Expression;
 }
 
 // everything that is executed but does not produce a value itself

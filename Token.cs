@@ -51,6 +51,8 @@ public enum TokenType
     RParen,
     LBracket,
     RBracket,
+    LSquare,
+    RSquare,
     Colon,
     ColonColon,
     Comma,
