@@ -51,6 +51,10 @@ public partial class Interpreter
             {
                 throw new LangException($"Function 'map' expects a unique list of keys. Value '{item}' is not unique in key list", GetCallToken(call).Line, _filePath);
             }
+            if (item is not string)
+            {
+                throw new LangException($"Function 'map' expects a list of strings for keys, but got '{GetValueType(item)}'", GetCallToken(call).Line, _filePath);
+            }
         }
 
         object? valuesObj = Evaluate(call.Arguments[1]);
@@ -93,9 +97,9 @@ public partial class Interpreter
 
         object? key = Evaluate(call.Arguments[1]);
 
-        if (key is null)
+        if (key is not string)
         {
-            throw new LangException($"Function 'mapGet' cannot use 'nil' as key", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'mapGet' expects a string as key, but got '{GetValueType(key)}'", GetCallToken(call).Line, _filePath);
         }
 
         if (map.ContainsKey(key) == false)
@@ -119,9 +123,9 @@ public partial class Interpreter
 
         object? key = Evaluate(call.Arguments[1]);
 
-        if (key is null)
+        if (key is not string)
         {
-            throw new LangException($"Function 'mapSet' cannot use 'nil' as key", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'mapSet' expects a string as key, but got '{GetValueType(key)}'", GetCallToken(call).Line, _filePath);
         }
 
         object? value = Evaluate(call.Arguments[2]);
@@ -178,9 +182,9 @@ public partial class Interpreter
 
         object? key = Evaluate(call.Arguments[1]);
 
-        if (key is null)
+        if (key is not string)
         {
-            throw new LangException($"Function 'mapHasKey' cannot use 'nil' as key", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'mapHasKey' expects a string as key, but got '{GetValueType(key)}'", GetCallToken(call).Line, _filePath);
         }
 
         return map.ContainsKey(key);
@@ -213,9 +217,9 @@ public partial class Interpreter
 
         object? key = Evaluate(call.Arguments[1]);
 
-        if (key is null)
+        if (key is not string)
         {
-            throw new LangException($"Function 'mapRemove' cannot use 'nil' as key", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'mapRemove' expects a string as key, but got '{GetValueType(key)}'", GetCallToken(call).Line, _filePath);
         }
 
         if (map.ContainsKey(key) == false)
