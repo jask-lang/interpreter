@@ -18,6 +18,7 @@ public partial class Interpreter
             "string"  => value is string,
             "boolean" => value is bool,
             "list"    => value is List<object?>,
+            "map"     => value is Dictionary<object, object>,
             "any"     => value is object || value == null,
             _ => value is StructInstance si && si.TypeName == typeName
         };
@@ -31,6 +32,7 @@ public partial class Interpreter
             string => "string",
             bool   => "boolean",
             List<object?> => "list",
+            Dictionary<object, object> => "map",
             StructInstance si => si.TypeName,
             UntrustedValue uv => "untrusted",
             null => "nil",
