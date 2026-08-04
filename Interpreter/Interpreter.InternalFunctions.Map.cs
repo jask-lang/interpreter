@@ -197,7 +197,7 @@ public partial class Interpreter
             throw new LangException($"Function 'mapSize' expects a map, but got '{GetValueType(mapObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        return map.Keys.Count;
+        return (double)map.Keys.Count;
     }
 
     private object? CallInternalFunctionMapRemove(Expression.Call call)
