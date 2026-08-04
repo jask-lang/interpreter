@@ -49,6 +49,8 @@ public enum TokenType
     Modulo,
     LParen,
     RParen,
+    LBracket,
+    RBracket,
     Colon,
     ColonColon,
     Comma,

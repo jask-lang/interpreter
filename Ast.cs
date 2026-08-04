@@ -24,6 +24,8 @@ public abstract record Expression
     public record StructCall(Token Name, List<(Token Field, JaskLang.Expression Value)> FieldInits) : Expression;
 
     public record MemberAccess(Expression Struct, Token Member) : Expression;
+
+    public record MapLiteral(Token LBracket, List<(Token Key, JaskLang.Expression Value)> Entries) : Expression;
 }
 
 // everything that is executed but does not produce a value itself
@@ -38,6 +40,7 @@ public abstract record Statement
     public record StructUpdate(JaskLang.Expression Source, List<(Token Field, JaskLang.Expression Value)> Updates, Token Target) : Statement;
 
     public record If(JaskLang.Expression Condition, List<Statement> ThenBranch, List<Statement.Elsif> ElsifBranches, List<Statement>? ElseBranch) : Statement;
+    
     public record Elsif(JaskLang.Expression Condition, List<Statement> Body) : Statement;
 
     public record While(JaskLang.Expression Condition, List<Statement> Body) : Statement;

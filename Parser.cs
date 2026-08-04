@@ -458,6 +458,33 @@ public class Parser(List<Token> tokens, string? filePath = null)
             return new Expression.Grouping(expr);
         }
 
+        if (Match(TokenType.LBracket))
+        {
+            var entries = new List<(Token Key, Expression Value)>();
+
+            if (Check(TokenType.RBracket) == false)
+            {
+                do
+                {
+                    if (Check(TokenType.String))
+                    {
+                        Token key = Advance();
+                        Consume(TokenType.Assign, "Expected '=' after map key");
+                        entries.Add((key, Expression()));
+                    }
+                    else
+                    {
+                        throw Error(Peek(), "Expected a string key in map literal");
+                    }
+                }
+                while (Match(TokenType.Comma));
+            }
+
+            Consume(TokenType.RBracket, "Expected '}' after map literal");
+            Token lBracket = Previous(); // the '{' token
+            return new Expression.MapLiteral(lBracket, entries);
+        }
+
         throw Error(Peek(), "Expected an expression");
     }
 

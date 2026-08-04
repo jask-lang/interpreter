@@ -17,6 +17,7 @@ public partial class Interpreter
             Expression.ModuleNamedCall mnc => EvaluateModuleNamedCall(mnc),
             Expression.StructCall  sc => EvaluateStructCall(sc),
             Expression.MemberAccess m => EvaluateMemberAccess(m),
+            Expression.MapLiteral   ml => EvaluateMapLiteral(ml),
             _ => throw new LangException($"Unknown expression: {expression}")
         };
     }
@@ -642,5 +643,33 @@ public partial class Interpreter
         }
 
         return true;
+    }
+
+    private object? EvaluateMapLiteral(Expression.MapLiteral ml)
+    {
+        var map = new Dictionary<object, object>(ml.Entries.Count);
+
+        foreach (var (key, valueExpr) in ml.Entries)
+        {
+            if (key.Literal is not string keyStr)
+            {
+                throw new LangException($"Map literal keys must be string literals", key.Line, _filePath);
+            }
+
+            object? value = Evaluate(valueExpr);
+            if (value is null)
+            {
+                throw new LangException($"Map literal values cannot be nil", key.Line, _filePath);
+            }
+
+            if (map.ContainsKey(keyStr))
+            {
+                throw new LangException($"Map literal has duplicate key '{keyStr}'", key.Line, _filePath);
+            }
+
+            map[keyStr] = value;
+        }
+
+        return map;
     }
 }
