@@ -17,6 +17,7 @@ static void printHelpMessage()
     Console.WriteLine("Possible arguments:");
     Console.WriteLine("--help           -h  : Prints this message and exits");
     Console.WriteLine("--version        -v  : Prints the interpreters version and exits");
+    Console.WriteLine("--input          -i  : Specifies the path to a .jask file to interpret");
     Console.WriteLine("--allow-stdout   -ao : Allows printing to stdout");
     Console.WriteLine("--allow-stdin    -ai : Allows reading from stdin");
     Console.WriteLine("--allow-trust    -at : Allows using trust()");
