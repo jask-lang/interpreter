@@ -10,6 +10,12 @@ public partial class Interpreter
         _internalFunctions["fileExists"] = CallInternalFunctionFileExists;
     }
 
+    /// <summary>
+    /// Reads from stdio, optionally printing a prompt first
+    /// </summary>
+    /// <param name="call"></param>
+    /// <returns>A Result struct containing an untrusted value</returns>
+    /// <exception cref="LangException">Throws on missing permissions or wrong type of param</exception>
     private object? CallInternalFunctionReadInput(Expression.Call call)
     {
         if (_permissionManager.IsPermitted(Permission.Stdin) == false)
@@ -29,7 +35,15 @@ public partial class Interpreter
             Console.Write(Stringify(promptValue));
         }
 
-        return new UntrustedValue(Console.ReadLine() ?? null);
+        try
+        {
+            string input = Console.ReadLine() ?? "";
+            return createStructInstanceFromResult(ResultType.OK, new UntrustedValue(input), null);
+        }
+        catch
+        {
+            return createStructInstanceFromResult(ResultType.NOT_OK, null, "Reading input failed");
+        }
     }
 
     private object? CallInternalFunctionReadFile(Expression.Call call)
