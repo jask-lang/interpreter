@@ -88,6 +88,12 @@ public partial class Interpreter
         }
     }
 
+    /// <summary>
+    /// Writes to a file
+    /// </summary>
+    /// <param name="call"></param>
+    /// <returns>A Result struct containing an untrusted value</returns>
+    /// <exception cref="LangException">Throws on missing permissions or wrong type of param</exception>
     private object? CallInternalFunctionWriteFile(Expression.Call call)
     {
         if (_permissionManager.IsPermitted(Permission.FileWrite) == false)
@@ -125,6 +131,12 @@ public partial class Interpreter
         }
     }
 
+    /// <summary>
+    /// Checks if a file exists
+    /// </summary>
+    /// <param name="call"></param>
+    /// <returns>A bool</returns>
+    /// <exception cref="LangException">Throws on missing permissions or wrong type of param</exception>
     private object? CallInternalFunctionFileExists(Expression.Call call)
     {
         if (_permissionManager.IsPermitted(Permission.FileRead) == false)
