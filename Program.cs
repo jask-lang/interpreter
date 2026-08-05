@@ -146,7 +146,7 @@ static void RunInteractiveMode(PermissionManager permissionManager)
         { "endwhile", "while" },
         { "endstruct", "struct"},
         { "endfor", "for"},
-        { "end", "function" }
+        { "endfunction", "function" }
     };
 
     string[] allKeywords = blockPairs.Values.Concat(blockPairs.Keys).ToArray();
