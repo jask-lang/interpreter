@@ -60,12 +60,16 @@ public partial class Interpreter
 
     private PermissionManager _permissionManager;
 
-    public Interpreter(PermissionManager permissionManager) : this(new HashSet<string>(), Directory.GetCurrentDirectory(), Directory.GetCurrentDirectory(), null, permissionManager) { }
+    private bool _isInteractiveMode;
 
-    public Interpreter(string baseDirectory, string? filePath, PermissionManager permissionManager) : this(new HashSet<string>(), baseDirectory, Directory.GetCurrentDirectory(), filePath, permissionManager) { }
+    public Interpreter(PermissionManager permissionManager) : this(new HashSet<string>(), Directory.GetCurrentDirectory(), Directory.GetCurrentDirectory(), null, permissionManager, isInteractiveMode: false) { }
+
+    public Interpreter(string baseDirectory, string? filePath, PermissionManager permissionManager) : this(new HashSet<string>(), baseDirectory, Directory.GetCurrentDirectory(), filePath, permissionManager, isInteractiveMode: false) { }
+
+    public Interpreter(PermissionManager permissionManager, bool isInteractiveMode) : this(new HashSet<string>(), Directory.GetCurrentDirectory(), Directory.GetCurrentDirectory(), null, permissionManager, isInteractiveMode) { }
 
     // internal constructor used when loading a module, so the circular-import guard is shared across the whole chain
-    private Interpreter(HashSet<string> modulesLoading, string baseDirectory, string processDirectory, string? filePath, PermissionManager permissionManager)
+    private Interpreter(HashSet<string> modulesLoading, string baseDirectory, string processDirectory, string? filePath, PermissionManager permissionManager, bool isInteractiveMode = false)
     {
         _modulesLoading = modulesLoading;
         _baseDirectory = baseDirectory;
@@ -73,6 +77,7 @@ public partial class Interpreter
         _filePath = filePath;
         _scopes.Push(_globalEnvironment);
         _permissionManager = permissionManager;
+        _isInteractiveMode = isInteractiveMode;
         initInternalFunctions();
     }
 
@@ -309,7 +314,11 @@ public partial class Interpreter
                 break;
 
             case Statement.Expression e:
-                Evaluate(e.Value);
+                object? result = Evaluate(e.Value);
+                if (_isInteractiveMode)
+                {
+                    Console.WriteLine(Stringify(result));
+                }
                 break;
 
             case Statement.Use u:
