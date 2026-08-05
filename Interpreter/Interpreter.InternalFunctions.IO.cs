@@ -46,6 +46,12 @@ public partial class Interpreter
         }
     }
 
+    /// <summary>
+    /// Reads a file
+    /// </summary>
+    /// <param name="call"></param>
+    /// <returns>A Result struct containing an untrusted value</returns>
+    /// <exception cref="LangException">Throws on missing permissions or wrong type of param</exception>
     private object? CallInternalFunctionReadFile(Expression.Call call)
     {
         if (_permissionManager.IsPermitted(Permission.FileRead) == false)
@@ -68,7 +74,7 @@ public partial class Interpreter
 
         if (File.Exists(path) == false)
         {
-            throw new LangException($"File at path '{path}' cannot be found", GetCallToken(call).Line, _filePath);
+            return createStructInstanceFromResult(ResultType.NOT_OK, null, $"File at path '{path}' cannot be found");
         }
 
         try
