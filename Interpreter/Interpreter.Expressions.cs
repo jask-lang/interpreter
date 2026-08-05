@@ -194,6 +194,15 @@ public partial class Interpreter
             }
         }
 
+        // check that all required parameters were bound
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            if (!functionEnv.ContainsKey(parameters[i].Name.Lexeme) && parameters[i].Item3 == null)
+            {
+                throw new LangException($"Missing required parameter '{parameters[i].Name.Lexeme}' when calling '{funcName}'", funcExpr.Name.Line, _filePath);
+            }
+        }
+
         // call function body in the new environment
         _scopes.Push(functionEnv);
         try
@@ -308,6 +317,15 @@ public partial class Interpreter
             else if (param.Item3 != null)
             {
                 functionEnv[param.Name.Lexeme] = Evaluate(param.Item3);
+            }
+        }
+
+        // check that all required parameters were bound
+        foreach (var param in match.Value.Params)
+        {
+            if (!functionEnv.ContainsKey(param.Name.Lexeme) && param.Item3 == null)
+            {
+                throw new LangException($"Missing required parameter '{param.Name.Lexeme}' when calling '{name}'", call.Name.Line, _filePath);
             }
         }
 
