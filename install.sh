@@ -8,11 +8,11 @@ OS_TYPE=$(uname -s)
 case "$OS_TYPE" in
     Darwin)
         OS="osx"
-        INSTALL_DIR="/usr/local/bin"
+        INSTALL_DIR="$HOME/Library/Application Support/jask/bin"
         ;;
     Linux)
         OS="linux"
-        INSTALL_DIR="/usr/local/bin"
+        INSTALL_DIR="$HOME/.local/bin"
         ;;
     *)
         echo "Error: Unsupported operating system ($OS_TYPE)."
@@ -35,12 +35,6 @@ case "$ARCH_TYPE" in
         ;;
 esac
 
-if [ "$(id -u)" -ne 0 ]; then
-    echo "Error: This script requires root privileges to install to ${INSTALL_DIR}."
-    echo "Please run the script using sudo: sudo ./install.sh"
-    exit 1
-fi
-
 RUNTIME_IDENTIFIER="${OS}-${ARCH}"
 
 echo "Building jask interpreter executable for ${RUNTIME_IDENTIFIER}..."
@@ -51,22 +45,47 @@ dotnet publish -c Release -r "$RUNTIME_IDENTIFIER" -o ./dist
 echo "Build successful. Installing executable to ${INSTALL_DIR}/jask..."
 
 # ensure target directory exists
-if [ ! -d "$INSTALL_DIR" ]; then
-    sudo mkdir -p "$INSTALL_DIR"
-fi
+mkdir -p "$INSTALL_DIR"
 
-# copy binary to global system path
-sudo cp ./dist/jask "${INSTALL_DIR}/jask"
+# copy binary to user bin directory
+cp ./dist/jask "${INSTALL_DIR}/jask"
 
 # grant execution permissions
-sudo chmod +x "${INSTALL_DIR}/jask"
+chmod +x "${INSTALL_DIR}/jask"
 
 # remove quarantine attribute on macOS (if applicable)
 if [ "$OS" = "osx" ]; then
-    sudo xattr -d com.apple.quarantine "${INSTALL_DIR}/jask" 2>/dev/null || true
+    xattr -d com.apple.quarantine "${INSTALL_DIR}/jask" 2>/dev/null || true
 fi
 
 # clean up build artifacts
 rm -rf ./dist
 
-echo "Installation complete. The 'jask' executable is ready for system-wide use!"
+# add to user PATH if not already present
+SHELL_RC=""
+if [ -f "$HOME/.zshrc" ]; then
+    SHELL_RC="$HOME/.zshrc"
+elif [ -f "$HOME/.bashrc" ]; then
+    SHELL_RC="$HOME/.bashrc"
+elif [ -f "$HOME/.bash_profile" ]; then
+    SHELL_RC="$HOME/.bash_profile"
+fi
+
+if [ -n "$SHELL_RC" ]; then
+    if grep -qF "$INSTALL_DIR" "$SHELL_RC" 2>/dev/null; then
+        echo "$INSTALL_DIR is already in your PATH."
+    else
+        echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$SHELL_RC"
+        echo "Added $INSTALL_DIR to your PATH in $(basename "$SHELL_RC")."
+    fi
+else
+    echo ""
+    echo "Note: $INSTALL_DIR was not found in your shell config."
+    echo "Please add it to your PATH manually by adding the following line"
+    echo "to your shell config (~/.zshrc, ~/.bashrc, or ~/.bash_profile):"
+    echo ""
+    echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
+fi
+
+echo ""
+echo "Installation complete. The 'jask' executable is ready for use!"
