@@ -135,7 +135,7 @@ static void RunInteractiveMode(PermissionManager permissionManager)
         writeToHistory = false;
     }
 
-    var interpreter = new Interpreter(permissionManager);
+    var interpreter = new Interpreter(permissionManager, isInteractiveMode: true);
     List<string> history = historyContent.ToList();
 
     StringBuilder multiLineBuffer = new StringBuilder();
