@@ -165,7 +165,7 @@ static void RunInteractiveMode(PermissionManager permissionManager)
             Console.Write(">>> ");
         }
 
-        string line = ReadLine(history);
+        string line = ReadLine(history, indentationLevel);
 
         if (line.Trim() == "exit")
         {
@@ -301,7 +301,7 @@ static bool IsWholeWord(ReadOnlySpan<char> span, int index, int length)
     return true;
 }
 
-static string ReadLine(List<string> history)
+static string ReadLine(List<string> history, int indentationLevel)
 {
     StringBuilder input = new StringBuilder();
     int historyIndex = history.Count;
@@ -315,7 +315,23 @@ static string ReadLine(List<string> history)
     {
         ConsoleKeyInfo keyInfo = Console.ReadKey(true);
 
-        if (keyInfo.Key == ConsoleKey.Enter)
+        if ((keyInfo.Modifiers & ConsoleModifiers.Control) == ConsoleModifiers.Control && keyInfo.Key == ConsoleKey.L)
+        {
+            // clear screen and redraw prompt
+            Console.Clear();
+            if (indentationLevel > 0)
+            {
+                Console.Write("... " + new string(' ', indentationLevel * 4));
+            }
+            else
+            {
+                Console.Write(">>> ");
+            }
+            startLeft = Console.CursorLeft;
+            startTop = Console.CursorTop;
+            continue;
+        }
+        else if (keyInfo.Key == ConsoleKey.Enter)
         {
             Console.WriteLine();
             return input.ToString();
