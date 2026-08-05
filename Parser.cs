@@ -561,8 +561,6 @@ public class Parser(List<Token> tokens, string? filePath = null)
 
     private LangException Error(Token token, string message)
     {
-        string where = token.Type == TokenType.Eof ? "at the end of the file" : $"at '{token.Lexeme}'";
-
-        return new LangException($"Syntax Error {where}: {message}", token.Line, _filePath);
+        return new LangException($"Syntax Error {token.Lexeme}: {message}", token.Line, _filePath);
     }
 }
