@@ -315,7 +315,7 @@ public partial class Interpreter
 
             case Statement.Expression e:
                 object? result = Evaluate(e.Value);
-                if (_isInteractiveMode)
+                if (_isInteractiveMode && result != null)
                 {
                     Console.WriteLine(Stringify(result));
                 }
