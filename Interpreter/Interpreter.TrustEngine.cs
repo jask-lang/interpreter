@@ -81,12 +81,12 @@ public partial class Interpreter
                 break;
 
             case "boolean":
-                if (rawValue == "true"  || uv.Value.ToString() == "1") return createStructInstanceFromResult(ResultType.OK, true);
-                if (rawValue == "false" || uv.Value.ToString() == "0") return createStructInstanceFromResult(ResultType.OK, false);
+                if (rawValue == "true"  || rawValue == "1") return createStructInstanceFromResult(ResultType.OK, true);
+                if (rawValue == "false" || rawValue == "0") return createStructInstanceFromResult(ResultType.OK, false);
                 break;
 
             case "json":
-                if (uv.Value is string jsonText)
+                if (rawValue is string jsonText)
                 {
                     try
                     {
