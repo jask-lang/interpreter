@@ -104,7 +104,7 @@ static void Run(Interpreter interpreter, bool isInteractiveMode, string source, 
     catch (Exception ex)
     {
         EnsureNewLineBeforeError();
-        Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+        Console.Error.WriteLine($"\x1b[31mUnexpected error: \x1b[0m{ex.Message}");
     }
 }
 
