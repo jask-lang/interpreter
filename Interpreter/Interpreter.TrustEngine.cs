@@ -78,8 +78,8 @@ public partial class Interpreter
                 return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' with pattern '{pattern}'");
             
             case "boolean":
-                if (uv.Value.ToString() == "true")  return createStructInstanceFromResult(ResultType.OK, true);
-                if (uv.Value.ToString() == "false") return createStructInstanceFromResult(ResultType.OK, false);
+                if (uv.Value.ToString() == "true"  || uv.Value.ToString() == "1")  return createStructInstanceFromResult(ResultType.OK, true);
+                if (uv.Value.ToString() == "false" || uv.Value.ToString() == "0") return createStructInstanceFromResult(ResultType.OK, false);
                 break;
 
             case "json":
