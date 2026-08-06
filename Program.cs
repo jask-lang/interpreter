@@ -113,6 +113,11 @@ static void RunInteractiveMode(PermissionManager permissionManager)
     printVersionMessage();
     Console.WriteLine("Use arrow keys for history, type 'exit' when you are done.");
 
+    if (permissionManager.IsPermitted(Permission.Stdout) == false)
+    {
+        Console.WriteLine($"\x1b[33mWarning: \x1b[0mMissing permission for 'stdout'!");
+    }
+
     // .jask_history will be stored in the users home dir
     string homePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     string historyFilePath = Path.Combine(homePath, ".jask_history");
