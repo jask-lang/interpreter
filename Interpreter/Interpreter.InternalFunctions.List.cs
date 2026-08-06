@@ -4,15 +4,16 @@ public partial class Interpreter
 {
     private void initInternalFunctionsList()
     {
-        _internalFunctions["list"]         = CallInternalFunctionList;
-        _internalFunctions["listSize"]     = CallInternalFunctionListSize;
-        _internalFunctions["listAdd"]      = CallInternalFunctionListAdd;
-        _internalFunctions["listGet"]      = CallInternalFunctionListGet;
-        _internalFunctions["listGetRange"] = CallInternalFunctionListGetRange;
-        _internalFunctions["listSet"]      = CallInternalFunctionListSet;
-        _internalFunctions["listRemove"]   = CallInternalFunctionListRemove;
-        _internalFunctions["listReverse"]  = CallInternalFunctionListReverse;
-        _internalFunctions["listExtend"]   = CallInternalFunctionListExtend;
+        _internalFunctions["list"]            = CallInternalFunctionList;
+        _internalFunctions["listSize"]        = CallInternalFunctionListSize;
+        _internalFunctions["listAdd"]         = CallInternalFunctionListAdd;
+        _internalFunctions["listGet"]         = CallInternalFunctionListGet;
+        _internalFunctions["listGetRange"]    = CallInternalFunctionListGetRange;
+        _internalFunctions["listSet"]         = CallInternalFunctionListSet;
+        _internalFunctions["listRemove"]      = CallInternalFunctionListRemove;
+        _internalFunctions["listReverse"]     = CallInternalFunctionListReverse;
+        _internalFunctions["listExtend"]      = CallInternalFunctionListExtend;
+        _internalFunctions["listCreateRange"] = CallInternalFunctionListCreateRange;
     }
 
     private object? CallInternalFunctionList(Expression.Call call)
@@ -132,7 +133,7 @@ public partial class Interpreter
         int endIndex = (int)endIndexDouble;
 
         object? listObj = Evaluate(call.Arguments[0]);
-        
+
         if (listObj is List<object?> list)
         {
             if (startIndex < 0 || endIndex >= list.Count || startIndex > endIndex)
@@ -187,7 +188,7 @@ public partial class Interpreter
 
         if (listObj is string str)
         {
-            
+
             if (index < 0 || index >= str.Length)
             {
                 throw new LangException($"Function 'listSet' index {index} is out of bounds for string of length {str.Length}", GetCallToken(call).Line, _filePath);
@@ -302,5 +303,46 @@ public partial class Interpreter
         }
 
         throw new LangException($"Function 'listExtend' expects both arguments to be lists or both to be strings, but got '{GetValueType(listObj1)}' and '{GetValueType(listObj2)}'", GetCallToken(call).Line, _filePath);
+    }
+
+    private object? CallInternalFunctionListCreateRange(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "listCreateRange");
+
+        object? rangeStartObj = Evaluate(call.Arguments[0]);
+        object? rangeEndObj = Evaluate(call.Arguments[1]);
+
+        if (rangeStartObj is not double rangeStart)
+        {
+            throw new LangException($"Function 'listCreateRange' expects first argument to be a number, but got '{GetValueType(rangeStartObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        if (rangeEndObj is not double rangeEnd)
+        {
+            throw new LangException($"Function 'listCreateRange' expects second argument to be a number, but got '{GetValueType(rangeEndObj)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        // Calculate total element count upfront
+        int count = (int)Math.Floor(Math.Abs(rangeEnd - rangeStart) / 1) + 1;
+
+        // pre-allocate the internal array buffer
+        List<object?> range = new List<object?>(count);
+
+        if (rangeEnd < rangeStart)
+        {
+            for (double i = rangeStart; i >= rangeEnd; i -= 1)
+            {
+                range.Add(i);
+            }
+        }
+        else
+        {
+            for (double i = rangeStart; i <= rangeEnd; i += 1)
+            {
+                range.Add(i);
+            }
+        }
+
+        return range;
     }
 }
