@@ -21,8 +21,8 @@ public partial class Interpreter
 {
     private void initInternalFunctionsTrustEngine()
     {
-        _internalFunctions["trust"]   = CallInternalFunctionTrust;
-        _internalFunctions["verify"]  = CallInternalFunctionVerify;
+        _internalFunctions["trust"] = CallInternalFunctionTrust;
+        _internalFunctions["verify"] = CallInternalFunctionVerify;
         _internalFunctions["untrust"] = CallInternalFunctionUntrust;
     }
 
@@ -65,42 +65,41 @@ public partial class Interpreter
             return createStructInstanceFromResult(ResultType.NOT_OK, null, "Untrusted value for verify is nil");
         }
 
+        // we can safely say that this is not null...
+        string rawValue = uv.Value.ToString()!.Trim();
+
         switch (pattern)
         {
             case "string":
                 return createStructInstanceFromResult(ResultType.OK, Stringify(uv.Value));
-            
+
             case "number":
-                if (double.TryParse(uv.Value.ToString(), out double num))
+                if (double.TryParse(rawValue, out double num))
                 {
                     return createStructInstanceFromResult(ResultType.OK, num);
                 }
-                return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' with pattern '{pattern}'");
-            
+                break;
+
             case "boolean":
-                if (uv.Value.ToString() == "true"  || uv.Value.ToString() == "1")  return createStructInstanceFromResult(ResultType.OK, true);
-                if (uv.Value.ToString() == "false" || uv.Value.ToString() == "0") return createStructInstanceFromResult(ResultType.OK, false);
+                if (rawValue == "true"  || uv.Value.ToString() == "1") return createStructInstanceFromResult(ResultType.OK, true);
+                if (rawValue == "false" || uv.Value.ToString() == "0") return createStructInstanceFromResult(ResultType.OK, false);
                 break;
 
             case "json":
-                if (uv.Value is not string jsonText)
+                if (uv.Value is string jsonText)
                 {
-                    return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' with pattern '{pattern}'");
+                    try
+                    {
+                        using JsonDocument document = JsonDocument.Parse(jsonText);
+                        object parsedValue = ConvertJsonElement(document.RootElement);
+                        return createStructInstanceFromResult(ResultType.OK, parsedValue);
+                    }
+                    catch (Exception) { }
                 }
-
-                try
-                {
-                    using JsonDocument document = JsonDocument.Parse(jsonText);
-                    object parsedValue = ConvertJsonElement(document.RootElement);
-                    return createStructInstanceFromResult(ResultType.OK, parsedValue);
-                }
-                catch (JsonException)
-                {
-                    return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' with pattern '{pattern}'");
-                }
+                break;
         }
 
-        return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Unknown verify pattern '{pattern}' for value {uv.Value}");
+        return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Cannot verify value '{uv.Value}' for pattern '{pattern}'");
     }
 
     private object ConvertJsonElement(JsonElement element)
