@@ -428,20 +428,21 @@ public class Parser(List<Token> tokens, string? filePath = null)
             }
         }
 
-        // handle map index operator on any expression: map[key]
-        while (Match(TokenType.LSquare))
+        // handle map index and member access in any order: map[key], expr.field, expr.field[key], etc.
+        while (Match(TokenType.LSquare) || Match(TokenType.Dot))
         {
-            Token bracket = Previous();
-            Expression key = Expression();
-            Consume(TokenType.RSquare, "Expected ']' after map index key");
-            expr = new Expression.MapIndex(expr, bracket, key);
-        }
-
-        // handle member access operator on any expression: expr.field
-        while (Match(TokenType.Dot))
-        {
-            Token member = Consume(TokenType.Identifier, "Expected a member name after '.'");
-            expr = new Expression.MemberAccess(expr, member);
+            if (Previous().Type == TokenType.LSquare)
+            {
+                Token bracket = Previous();
+                Expression key = Expression();
+                Consume(TokenType.RSquare, "Expected ']' after map index key");
+                expr = new Expression.MapIndex(expr, bracket, key);
+            }
+            else
+            {
+                Token member = Consume(TokenType.Identifier, "Expected a member name after '.'");
+                expr = new Expression.MemberAccess(expr, member);
+            }
         }
 
         return expr;
