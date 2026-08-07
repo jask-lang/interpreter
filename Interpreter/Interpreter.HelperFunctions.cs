@@ -253,8 +253,10 @@ public partial class Interpreter
             "floor" => new() { "number" },
             "ceil"  => new() { "number" },
 
-            "stringGetIndexOf"   => new() { "string", "substring" },
-            "stringGetSubstring" => new() { "string", "index", "length" },
+            "charCode"           => new() { "ch" },
+            "charFromCode"       => new() { "code" },
+            "charToUpper"        => new() { "ch" },
+            "charToLower"        => new() { "ch" },
 
             "toNumber" => new() { "value" },
             "toString" => new() { "value" },

@@ -10,26 +10,28 @@ public partial class Interpreter
     private void initInternalFunctions()
     {
         // standard functions
-        _internalFunctions["print"]       = CallInternalFunctionPrint;
-        _internalFunctions["printLine"]   = CallInternalFunctionPrintLine;
-        _internalFunctions["type"]        = CallInternalFunctionType;
-        _internalFunctions["clock"]       = CallInternalFunctionClock;
-        _internalFunctions["exit"]        = CallInternalFunctionExit;
-        _internalFunctions["assert"]      = CallInternalFunctionAssert;
-        _internalFunctions["sleepFor"]    = CallInternalFunctionSleepFor;
+        _internalFunctions["print"]     = CallInternalFunctionPrint;
+        _internalFunctions["printLine"] = CallInternalFunctionPrintLine;
+        _internalFunctions["type"]      = CallInternalFunctionType;
+        _internalFunctions["clock"]     = CallInternalFunctionClock;
+        _internalFunctions["exit"]      = CallInternalFunctionExit;
+        _internalFunctions["assert"]    = CallInternalFunctionAssert;
+        _internalFunctions["sleepFor"]  = CallInternalFunctionSleepFor;
 
         // variable convertions
-        _internalFunctions["toNumber"]    = CallInternalFunctionToNumber;
-        _internalFunctions["toString"]    = CallInternalFunctionToString;
+        _internalFunctions["toNumber"] = CallInternalFunctionToNumber;
+        _internalFunctions["toString"] = CallInternalFunctionToString;
 
         // math functions
-        _internalFunctions["round"]       = CallInternalFunctionRound;
-        _internalFunctions["floor"]       = CallInternalFunctionFloor;
-        _internalFunctions["ceil"]        = CallInternalFunctionCeil;
+        _internalFunctions["round"] = CallInternalFunctionRound;
+        _internalFunctions["floor"] = CallInternalFunctionFloor;
+        _internalFunctions["ceil"]  = CallInternalFunctionCeil;
 
         // string functions
-        _internalFunctions["stringGetIndexOf"]   = CallInternalFunctionStringGetIndexOf;
-        _internalFunctions["stringGetSubstring"] = CallInternalFunctionStringGetSubstring;
+        _internalFunctions["charCode"]     = CallInternalFunctionCharCode;
+        _internalFunctions["charFromCode"] = CallInternalFunctionCharFromCode;
+        _internalFunctions["charToUpper"]  = CallInternalFunctionCharToUpper;
+        _internalFunctions["charToLower"]  = CallInternalFunctionCharToLower;
 
         // list functions
         initInternalFunctionsList();
@@ -159,50 +161,74 @@ public partial class Interpreter
         return Math.Ceiling(d);
     }
 
-    private object? CallInternalFunctionStringGetIndexOf(Expression.Call call)
+    private object? CallInternalFunctionCharCode(Expression.Call call)
     {
-        CheckNumberOfArguments(call, 2, "stringGetIndexOf");
+        CheckNumberOfArguments(call, 1, "charCode");
 
-        object? strValue = Evaluate(call.Arguments[0]);
-        if (strValue is not string str)
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not string str)
         {
-            throw new LangException($"Function 'stringGetIndexOf' expects a string argument, but got '{GetValueType(strValue)}'", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'charCode' expects a string argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
+        }
+        if (str.Length != 1)
+        {
+            throw new LangException($"Function 'charCode' expects a single-character string, but got '{str}'", GetCallToken(call).Line, _filePath);
         }
 
-        object? searchValue = Evaluate(call.Arguments[1]);
-        if (searchValue is not string search)
-        {
-            throw new LangException($"Function 'stringGetIndexOf' expects a string argument for search, but got '{GetValueType(searchValue)}'", GetCallToken(call).Line, _filePath);
-        }
-
-        return (double)str.IndexOf(search);
+        return (double)str[0];
     }
 
-    private object? CallInternalFunctionStringGetSubstring(Expression.Call call)
+    private object? CallInternalFunctionCharFromCode(Expression.Call call)
     {
-        CheckNumberOfArguments(call, 3, "stringGetSubstring");
+        CheckNumberOfArguments(call, 1, "charFromCode");
 
-        object? strValue = Evaluate(call.Arguments[0]);
-        if (strValue is not string str)
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not double codeDouble)
         {
-            throw new LangException($"Function 'stringGetSubstring' expects a string argument, but got '{GetValueType(strValue)}'", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'charFromCode' expects a number argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
         }
 
-        object? startIndexValue = Evaluate(call.Arguments[1]);
-        if (startIndexValue is not double startIndexDouble)
+        int code = (int)codeDouble;
+        if (code < 0 || code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF))
         {
-            throw new LangException($"Function 'stringGetSubstring' expects a number argument for start index, but got '{GetValueType(startIndexValue)}'", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'charFromCode' expects a valid Unicode code point, but got {code}", GetCallToken(call).Line, _filePath);
         }
-        int startIndex = (int)startIndexDouble;
 
-        object? lengthValue = Evaluate(call.Arguments[2]);
-        if (lengthValue is not double lengthDouble)
+        return new string(char.ConvertFromUtf32(code));
+    }
+
+    private object? CallInternalFunctionCharToUpper(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "charToUpper");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not string str)
         {
-            throw new LangException($"Function 'stringGetSubstring' expects a number argument for length, but got '{GetValueType(lengthValue)}'", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function 'charToUpper' expects a string argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
         }
-        int length = (int)lengthDouble;
+        if (str.Length != 1)
+        {
+            throw new LangException($"Function 'charToUpper' expects a single-character string, but got '{str}'", GetCallToken(call).Line, _filePath);
+        }
 
-        return str.Substring(startIndex, length);
+        return char.ToUpper(str[0]).ToString();
+    }
+
+    private object? CallInternalFunctionCharToLower(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "charToLower");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not string str)
+        {
+            throw new LangException($"Function 'charToLower' expects a string argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
+        }
+        if (str.Length != 1)
+        {
+            throw new LangException($"Function 'charToLower' expects a single-character string, but got '{str}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return char.ToLower(str[0]).ToString();
     }
 
     private object? CallInternalFunctionClock(Expression.Call call)
