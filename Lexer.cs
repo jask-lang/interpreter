@@ -298,6 +298,6 @@ public class Lexer
     private void AddToken(TokenType type, object? literal = null)
     {
         string text = _source.Substring(_start, _current - _start);
-        _tokens.Add(new Token(type, text, literal, _line));
+        _tokens.Add(new Token(type, text, literal, _line, _start));
     }
 }

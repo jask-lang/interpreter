@@ -4,6 +4,134 @@ using JaskLang;
 
 static class Repl
 {
+    static readonly Dictionary<TokenType, string> TokenColors = new()
+    {
+        [TokenType.String]  = "\x1b[31m",
+        [TokenType.Number]  = "\x1b[32m",
+        [TokenType.True]    = "\x1b[36m",
+        [TokenType.False]   = "\x1b[36m",
+        [TokenType.Nil]     = "\x1b[36m",
+    };
+
+    static readonly HashSet<TokenType> KeywordTypes = new()
+    {
+        TokenType.Set, TokenType.Restrict, TokenType.Global,
+        TokenType.In, TokenType.If, TokenType.Else, TokenType.EndIf,
+        TokenType.While, TokenType.EndWhile,
+        TokenType.For, TokenType.EndFor,
+        TokenType.Function, TokenType.EndFunction,
+        TokenType.Use, TokenType.As,
+        TokenType.Struct, TokenType.EndStruct,
+        TokenType.Update, TokenType.Return,
+        TokenType.Break, TokenType.Continue,
+        TokenType.And, TokenType.Or, TokenType.Not, TokenType.Is,
+    };
+
+    static string GetColorForType(TokenType type)
+    {
+        if (TokenColors.TryGetValue(type, out var color))
+            return color;
+        if (KeywordTypes.Contains(type))
+            return "\x1b[36m";
+        return "\x1b[0m";
+    }
+
+    static string Highlight(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        try
+        {
+            var lexer = new Lexer(text, true, null);
+            var tokens = lexer.ScanTokens();
+            var sb = new StringBuilder();
+            int pos = 0;
+
+            foreach (var token in tokens)
+            {
+                if (token.Type == TokenType.Eof)
+                    break;
+
+                int tokenStart = token.Start;
+                while (pos < text.Length && pos < tokenStart)
+                {
+                    sb.Append(text[pos]);
+                    pos++;
+                }
+
+                string color = GetColorForType(token.Type);
+                sb.Append(color);
+                sb.Append(token.Lexeme);
+                sb.Append("\x1b[0m");
+                pos += token.Lexeme.Length;
+            }
+
+            while (pos < text.Length)
+            {
+                sb.Append(text[pos]);
+                pos++;
+            }
+
+            return sb.ToString();
+        }
+        catch
+        {
+            return text;
+        }
+    }
+
+    static int VisibleLength(string ansiText)
+    {
+        int len = 0;
+        for (int i = 0; i < ansiText.Length; i++)
+        {
+            if (ansiText[i] == '\x1b')
+            {
+                while (i < ansiText.Length && ansiText[i] != 'm')
+                    i++;
+            }
+            else
+            {
+                len++;
+            }
+        }
+        return len;
+    }
+
+    static int VisibleColumnAt(string ansiText, int strIndex)
+    {
+        int visible = 0;
+        int strPos = 0;
+        for (int i = 0; i < ansiText.Length; i++)
+        {
+            if (strPos >= strIndex)
+                break;
+
+            if (ansiText[i] == '\x1b')
+            {
+                while (i < ansiText.Length && ansiText[i] != 'm')
+                    i++;
+            }
+            else
+            {
+                visible++;
+                strPos++;
+            }
+        }
+        return visible;
+    }
+
+    static void WriteHighlightedLine(int startLeft, int startTop, string text, int cursorPosition)
+    {
+        string highlighted = Highlight(text);
+        Console.SetCursorPosition(startLeft, startTop);
+        Console.Write(highlighted + " ");
+
+        int visibleCol = VisibleColumnAt(highlighted, cursorPosition);
+        Console.SetCursorPosition(startLeft + visibleCol, startTop);
+    }
+
     public static void Run(PermissionManager permissionManager, string version)
     {
         PrintVersionMessage(version);
@@ -198,7 +326,8 @@ static class Repl
                 if (cursorPosition > 0)
                 {
                     cursorPosition--;
-                    Console.SetCursorPosition(startLeft + cursorPosition, startTop);
+                    int visCol = VisibleColumnAt(Highlight(input.ToString()), cursorPosition);
+                    Console.SetCursorPosition(startLeft + visCol, startTop);
                 }
             }
             else if (keyInfo.Key == ConsoleKey.RightArrow)
@@ -206,7 +335,8 @@ static class Repl
                 if (cursorPosition < input.Length)
                 {
                     cursorPosition++;
-                    Console.SetCursorPosition(startLeft + cursorPosition, startTop);
+                    int visCol = VisibleColumnAt(Highlight(input.ToString()), cursorPosition);
+                    Console.SetCursorPosition(startLeft + visCol, startTop);
                 }
             }
             else if (keyInfo.Key == ConsoleKey.UpArrow)
@@ -217,8 +347,12 @@ static class Repl
                     ClearCurrentLine(startLeft, startTop, input.Length);
                     input.Clear();
                     input.Append(history[historyIndex]);
-                    Console.Write(input.ToString());
                     cursorPosition = input.Length;
+
+                    string highlighted = Highlight(input.ToString());
+                    Console.Write(highlighted);
+                    int visLen = VisibleLength(highlighted);
+                    Console.SetCursorPosition(startLeft + visLen, startTop);
                 }
             }
             else if (keyInfo.Key == ConsoleKey.DownArrow)
@@ -229,8 +363,12 @@ static class Repl
                     ClearCurrentLine(startLeft, startTop, input.Length);
                     input.Clear();
                     input.Append(history[historyIndex]);
-                    Console.Write(input.ToString());
                     cursorPosition = input.Length;
+
+                    string highlighted = Highlight(input.ToString());
+                    Console.Write(highlighted);
+                    int visLen = VisibleLength(highlighted);
+                    Console.SetCursorPosition(startLeft + visLen, startTop);
                 }
                 else if (historyIndex == history.Count - 1)
                 {
@@ -249,7 +387,7 @@ static class Repl
                     cursorPosition--;
 
                     // rewrite the line and update the cursor position
-                    RewriteLine(startLeft, startTop, input.ToString(), cursorPosition);
+                    WriteHighlightedLine(startLeft, startTop, input.ToString(), cursorPosition);
                 }
             }
             else if (keyInfo.KeyChar != '\u0000')
@@ -259,29 +397,21 @@ static class Repl
                 cursorPosition++;
 
                 // rewrite the line and update the cursor position
-                RewriteLine(startLeft, startTop, input.ToString(), cursorPosition);
+                WriteHighlightedLine(startLeft, startTop, input.ToString(), cursorPosition);
             }
         }
-    }
-
-    // rewrites a line in the console, ensuring the cursor is placed correctly after the rewrite
-    static void RewriteLine(int startLeft, int startTop, string text, int cursorPosition)
-    {
-        Console.SetCursorPosition(startLeft, startTop);
-        Console.Write(text + " ");
-        Console.SetCursorPosition(startLeft + cursorPosition, startTop);
     }
 
     static void printPrompt(int indentationLevel)
     {
         if (indentationLevel > 0)
         {
-            Console.Write("\x1b[38;5;208m...\x1b[0m " + new string(' ', indentationLevel * 4));
+            Console.Write("... " + new string(' ', indentationLevel * 4));
         }
         else
         {
             
-            Console.Write("\x1b[38;5;208m>>>\x1b[0m ");
+            Console.Write(">>> ");
         }
     }
 
