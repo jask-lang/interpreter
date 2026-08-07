@@ -28,10 +28,12 @@ public partial class Interpreter
         _internalFunctions["ceil"]  = CallInternalFunctionCeil;
 
         // string functions
-        _internalFunctions["charCode"]     = CallInternalFunctionCharCode;
-        _internalFunctions["charFromCode"] = CallInternalFunctionCharFromCode;
-        _internalFunctions["charToUpper"]  = CallInternalFunctionCharToUpper;
-        _internalFunctions["charToLower"]  = CallInternalFunctionCharToLower;
+        _internalFunctions["charCode"]           = CallInternalFunctionCharCode;
+        _internalFunctions["charFromCode"]       = CallInternalFunctionCharFromCode;
+        _internalFunctions["charToUpper"]        = CallInternalFunctionCharToUpper;
+        _internalFunctions["charToLower"]        = CallInternalFunctionCharToLower;
+        _internalFunctions["charCount"]          = CallInternalFunctionCharCount;
+        _internalFunctions["charAt"]             = CallInternalFunctionCharAt;
 
         // list functions
         initInternalFunctionsList();
@@ -229,6 +231,46 @@ public partial class Interpreter
         }
 
         return char.ToLower(str[0]).ToString();
+    }
+
+    private object? CallInternalFunctionCharCount(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "charCount");
+
+        object? argValue = Evaluate(call.Arguments[0]);
+        if (argValue is not string str)
+        {
+            throw new LangException($"Function 'charCount' expects a string argument, but got '{GetValueType(argValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return (double)str.EnumerateRunes().Count();
+    }
+
+    private object? CallInternalFunctionCharAt(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 2, "charAt");
+
+        object? strValue = Evaluate(call.Arguments[0]);
+        if (strValue is not string str)
+        {
+            throw new LangException($"Function 'charAt' expects first argument to be a string, but got '{GetValueType(strValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        object? indexValue = Evaluate(call.Arguments[1]);
+        if (indexValue is not double indexDouble)
+        {
+            throw new LangException($"Function 'charAt' expects second argument to be a number, but got '{GetValueType(indexValue)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        int index = (int)indexDouble;
+        var runes = str.EnumerateRunes().ToList();
+
+        if (index < 0 || index >= runes.Count)
+        {
+            throw new LangException($"Function 'charAt' index {index} is out of bounds for string of length {runes.Count}", GetCallToken(call).Line, _filePath);
+        }
+
+        return runes[index].ToString();
     }
 
     private object? CallInternalFunctionClock(Expression.Call call)

@@ -217,7 +217,7 @@ public partial class Interpreter
                 }
                 else if (collectionObj is string str)
                 {
-                    iterable = str.Select(c => (object?)c.ToString());
+                    iterable = str.EnumerateRunes().Select(r => (object?)r.ToString());
                 }
                 else
                 {

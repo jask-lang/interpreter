@@ -257,6 +257,8 @@ public partial class Interpreter
             "charFromCode"       => new() { "code" },
             "charToUpper"        => new() { "ch" },
             "charToLower"        => new() { "ch" },
+            "charCount"          => new() { "s" },
+            "charAt"             => new() { "s", "index" },
 
             "toNumber" => new() { "value" },
             "toString" => new() { "value" },
