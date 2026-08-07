@@ -34,11 +34,6 @@ public partial class Interpreter
 
         object? listObj = Evaluate(call.Arguments[0]);
 
-        if (listObj is string listString)
-        {
-            return (double)listString.Length;
-        }
-
         if (listObj is not List<object?> list)
         {
             throw new LangException($"Function 'listSize' expects a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
@@ -53,27 +48,16 @@ public partial class Interpreter
 
         object? listObj = Evaluate(call.Arguments[0]);
 
-        if (listObj is List<object?> list)
+        if (listObj is not List<object?> list)
         {
-            // create a copy of the list to avoid modifying the original
-            var newList = list.ToList();
-            newList.Add(Evaluate(call.Arguments[1]));
-
-            return newList;
+            throw new LangException($"Function 'listAdd' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        if (listObj is string str)
-        {
-            object? elementToAdd = Evaluate(call.Arguments[1]);
-            if (elementToAdd is not string)
-            {
-                throw new LangException($"Function 'listAdd' expects second argument to be a string when first argument is a string, but got '{GetValueType(elementToAdd)}'", GetCallToken(call).Line, _filePath);
-            }
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+        newList.Add(Evaluate(call.Arguments[1]));
 
-            return str + (string)elementToAdd;
-        }
-
-        throw new LangException($"Function 'listAdd' expects first argument to be a list or string, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
+        return newList;
     }
 
     private object? CallInternalFunctionListGet(Expression.Call call)
@@ -90,27 +74,17 @@ public partial class Interpreter
 
         object? listObj = Evaluate(call.Arguments[0]);
 
-        if (listObj is List<object?> list)
+        if (listObj is not List<object?> list)
         {
-            if (index < 0 || index >= list.Count)
-            {
-                throw new LangException($"Function 'listGet' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
-            }
-
-            return list[index];
+            throw new LangException($"Function 'listGet' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        if (listObj is string str)
+        if (index < 0 || index >= list.Count)
         {
-            if (index < 0 || index >= str.Length)
-            {
-                throw new LangException($"Function 'listGet' index {index} is out of bounds for string of length {str.Length}", GetCallToken(call).Line, _filePath);
-            }
-
-            return str[index].ToString();
+            throw new LangException($"Function 'listGet' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
         }
 
-        throw new LangException($"Function 'listGet' expects first argument to be a list or a a string, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
+        return list[index];
     }
 
     private object? CallInternalFunctionListGetRange(Expression.Call call)
@@ -134,27 +108,17 @@ public partial class Interpreter
 
         object? listObj = Evaluate(call.Arguments[0]);
 
-        if (listObj is List<object?> list)
+        if (listObj is not List<object?> list)
         {
-            if (startIndex < 0 || endIndex >= list.Count || startIndex > endIndex)
-            {
-                throw new LangException($"Function 'listGetRange' indices [{startIndex}, {endIndex}] are out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
-            }
-
-            return list.GetRange(startIndex, endIndex - startIndex + 1);
+            throw new LangException($"Function 'listGetRange' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        if (listObj is string str)
+        if (startIndex < 0 || endIndex >= list.Count || startIndex > endIndex)
         {
-            if (startIndex < 0 || endIndex >= str.Length || startIndex > endIndex)
-            {
-                throw new LangException($"Function 'listGetRange' indices [{startIndex}, {endIndex}] are out of bounds for string of length {str.Length}", GetCallToken(call).Line, _filePath);
-            }
-
-            return str.Substring(startIndex, endIndex - startIndex + 1);
+            throw new LangException($"Function 'listGetRange' indices [{startIndex}, {endIndex}] are out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
         }
 
-        throw new LangException($"Function 'listGetRange' expects first argument to be a list or a string, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
+        return list.GetRange(startIndex, endIndex - startIndex + 1);
     }
 
     private object? CallInternalFunctionListSet(Expression.Call call)
@@ -172,39 +136,21 @@ public partial class Interpreter
         object? listObj = Evaluate(call.Arguments[0]);
         object? value = Evaluate(call.Arguments[2]);
 
-        if (listObj is List<object?> list)
+        if (listObj is not List<object?> list)
         {
-            if (index < 0 || index >= list.Count)
-            {
-                throw new LangException($"Function 'listSet' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
-            }
-
-            // create a copy of the list to avoid modifying the original
-            var newList = list.ToList();
-            newList[index] = value;
-
-            return newList;
+            throw new LangException($"Function 'listSet' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        if (listObj is string str)
+        if (index < 0 || index >= list.Count)
         {
-
-            if (index < 0 || index >= str.Length)
-            {
-                throw new LangException($"Function 'listSet' index {index} is out of bounds for string of length {str.Length}", GetCallToken(call).Line, _filePath);
-            }
-
-            if (value is not string)
-            {
-                throw new LangException($"Function 'listSet' expects third argument to be a string when first argument is a string, but got '{GetValueType(value)}'", GetCallToken(call).Line, _filePath);
-            }
-
-            // create a new string with the character at the specified index replaced
-            var newStr = str.Substring(0, index) + value?.ToString() + str.Substring(index + 1);
-            return newStr;
+            throw new LangException($"Function 'listSet' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
         }
 
-        throw new LangException($"Function 'listSet' expects first argument to be a list or a string, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+        newList[index] = value;
+
+        return newList;
     }
 
     private object? CallInternalFunctionListRemove(Expression.Call call)
@@ -221,33 +167,21 @@ public partial class Interpreter
 
         object? listObj = Evaluate(call.Arguments[0]);
 
-        if (listObj is List<object?> list)
+        if (listObj is not List<object?> list)
         {
-            if (index < 0 || index >= list.Count)
-            {
-                throw new LangException($"Function 'listRemove' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
-            }
-
-            // create a copy of the list to avoid modifying the original
-            var newList = list.ToList();
-            newList.RemoveAt(index);
-
-            return newList;
+            throw new LangException($"Function 'listRemove' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        if (listObj is string str)
+        if (index < 0 || index >= list.Count)
         {
-            if (index < 0 || index >= str.Length)
-            {
-                throw new LangException($"Function 'listRemove' index {index} is out of bounds for string of length {str.Length}", GetCallToken(call).Line, _filePath);
-            }
-
-            // create a new string with the character at the specified index removed
-            var newStr = str.Substring(0, index) + str.Substring(index + 1);
-            return newStr;
+            throw new LangException($"Function 'listRemove' index {index} is out of bounds for list of size {list.Count}", GetCallToken(call).Line, _filePath);
         }
 
-        throw new LangException($"Function 'listRemove' expects first argument to be a list or a string, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+        newList.RemoveAt(index);
+
+        return newList;
     }
 
     private object? CallInternalFunctionListReverse(Expression.Call call)
@@ -256,23 +190,16 @@ public partial class Interpreter
 
         object? listObj = Evaluate(call.Arguments[0]);
 
-        if (listObj is List<object?> list)
+        if (listObj is not List<object?> list)
         {
-            // create a copy of the list to avoid modifying the original
-            var newList = list.ToList();
-            newList.Reverse();
-
-            return newList;
+            throw new LangException($"Function 'listReverse' expects first argument to be a list, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        if (listObj is string str)
-        {
-            char[] charArray = str.ToCharArray();
-            Array.Reverse(charArray);
-            return new string(charArray);
-        }
+        // create a copy of the list to avoid modifying the original
+        var newList = list.ToList();
+        newList.Reverse();
 
-        throw new LangException($"Function 'listReverse' expects first argument to be a list or a string, but got '{GetValueType(listObj)}'", GetCallToken(call).Line, _filePath);
+        return newList;
     }
 
     private object? CallInternalFunctionListExtend(Expression.Call call)
