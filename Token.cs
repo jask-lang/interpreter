@@ -19,8 +19,6 @@ public enum TokenType
     EndWhile,
     For,
     EndFor,
-    Repeat,
-    Times,
     Break,
     Continue,
     True,
