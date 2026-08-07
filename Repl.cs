@@ -150,7 +150,7 @@ static class Repl
 
     public static void PrintVersionMessage(string version)
     {
-        Console.WriteLine($"jask lang interpreter {version} (build {GetBuildDate()})");
+        Console.WriteLine($"\x1b[38;5;208mjask\x1b[0m lang interpreter {version} (build {GetBuildDate()})");
     }
 
     static string GetBuildDate()
@@ -276,12 +276,12 @@ static class Repl
     {
         if (indentationLevel > 0)
         {
-            Console.Write("\x1b[30m...\x1b[0m " + new string(' ', indentationLevel * 4));
+            Console.Write("\x1b[38;5;208m...\x1b[0m " + new string(' ', indentationLevel * 4));
         }
         else
         {
             
-            Console.Write("\x1b[30m>>>\x1b[0m ");
+            Console.Write("\x1b[38;5;208m>>>\x1b[0m ");
         }
     }
 
