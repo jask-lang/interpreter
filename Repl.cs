@@ -56,15 +56,7 @@ static class Repl
         while (true)
         {
             int indentationLevel = openBlocks.Count;
-
-            if (indentationLevel > 0)
-            {
-                Console.Write("... " + new string(' ', indentationLevel * 4));
-            }
-            else
-            {
-                Console.Write(">>> ");
-            }
+            printPrompt(indentationLevel);
 
             string line = ReadLine(history, indentationLevel);
 
@@ -189,15 +181,7 @@ static class Repl
             {
                 // clear screen and redraw prompt
                 Console.Clear();
-
-                if (indentationLevel > 0)
-                {
-                    Console.Write("... " + new string(' ', indentationLevel * 4));
-                }
-                else
-                {
-                    Console.Write(">>> ");
-                }
+                printPrompt(indentationLevel);
 
                 startLeft = Console.CursorLeft;
                 startTop  = Console.CursorTop;
@@ -286,6 +270,19 @@ static class Repl
         Console.SetCursorPosition(startLeft, startTop);
         Console.Write(text + " ");
         Console.SetCursorPosition(startLeft + cursorPosition, startTop);
+    }
+
+    static void printPrompt(int indentationLevel)
+    {
+        if (indentationLevel > 0)
+        {
+            Console.Write("\x1b[30m...\x1b[0m " + new string(' ', indentationLevel * 4));
+        }
+        else
+        {
+            
+            Console.Write("\x1b[30m>>>\x1b[0m ");
+        }
     }
 
     // deletes the current line in the console, ensuring the cursor is placed at the start of the line after clearing

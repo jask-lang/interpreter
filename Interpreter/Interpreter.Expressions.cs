@@ -349,11 +349,11 @@ public partial class Interpreter
         return null;
     }
 
-    private (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? SelectBestOverload(
-        IReadOnlyList<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> overloads,
+    private (List<(Token Name, Token Type, Expression? Default)> Params, List<Statement> Body)? SelectBestOverload(
+        IReadOnlyList<(List<(Token Name, Token Type, Expression? Default)> Params, List<Statement> Body)> overloads,
         IReadOnlyList<object?> argValues)
     {
-        (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? bestMatch = null;
+        (List<(Token Name, Token Type, Expression? Default)> Params, List<Statement> Body)? bestMatch = null;
         int bestRequired = -1;
         int bestAnyCount = int.MaxValue;
 
