@@ -6,6 +6,7 @@ public enum TokenType
     Number,
     Identifier,
     String,
+    Byte,
 
     // keywords
     Set,

@@ -139,6 +139,16 @@ public class Lexer
             case '"':
                 ScanString();
                 break;
+            case '0':
+                if (Match('x') || Match('X'))
+                {
+                    ScanHexadecimal();
+                }
+                else
+                {
+                    ScanNumber();
+                }
+                break;
             default:
                 if (char.IsDigit(c))
                 {
@@ -264,6 +274,44 @@ public class Lexer
 
         string text = _source.Substring(_start, _current - _start);
         AddToken(TokenType.Number, double.Parse(text, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    private static bool IsHexDigit(char c)
+    {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    }
+
+    private void ScanHexadecimal()
+    {
+        int hexStart = _current;
+
+        while (IsHexDigit(Peek()))
+        {
+            Advance();
+        }
+
+        int hexLength = _current - hexStart;
+        string fullText = _source.Substring(_start, _current - _start);
+
+        if (hexLength == 0)
+        {
+            throw new LangException($"Invalid hexadecimal literal '{fullText}'. Expected hex digits after prefix.", _line, _filePath);
+        }
+
+        if (char.IsLetter(Peek()) || Peek() == '_')
+        {
+            char invalidChar = Peek();
+            throw new LangException($"Invalid character '{invalidChar}' in hexadecimal literal '{fullText}{invalidChar}'.", _line, _filePath);
+        }
+
+        string hexDigits = _source.Substring(hexStart, hexLength);
+
+        if (!int.TryParse(hexDigits, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out int value) || value < 0 || value > 255)
+        {
+            throw new LangException($"Hexadecimal literal '{fullText}' is out of byte range (0-255).", _line, _filePath);
+        }
+
+        AddToken(TokenType.Byte, (byte)value);
     }
 
     private void ScanIdentifier()

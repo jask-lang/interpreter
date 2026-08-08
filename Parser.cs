@@ -450,16 +450,27 @@ public class Parser(List<Token> tokens, string? filePath = null)
 
     private Expression Primary()
     {
-        if (Match(TokenType.Number, TokenType.String)) return new Expression.Literal(Previous().Literal);
-        if (Match(TokenType.True))                     return new Expression.Literal(true);
-        if (Match(TokenType.False))                    return new Expression.Literal(false);
-        if (Match(TokenType.Nil))                      return new Expression.Literal(null);
+        if (Match(TokenType.Number, TokenType.String, TokenType.Byte))
+        {
+            return new Expression.Literal(Previous().Literal);
+        }
+        if (Match(TokenType.True))
+        {
+            return new Expression.Literal(true);
+        }
+        if (Match(TokenType.False))
+        {
+            return new Expression.Literal(false);
+        }
+        if (Match(TokenType.Nil))
+        {
+            return new Expression.Literal(null);
+        }
         if (Match(TokenType.Identifier))
         {
             Token ident = Previous();
             return new Expression.Variable(ident);
         }
-
         if (Match(TokenType.LParen))
         {
             Expression expr = Expression();
@@ -467,7 +478,6 @@ public class Parser(List<Token> tokens, string? filePath = null)
 
             return new Expression.Grouping(expr);
         }
-
         if (Match(TokenType.LBracket))
         {
             var entries = new List<(Token Key, Expression Value)>();
@@ -494,7 +504,6 @@ public class Parser(List<Token> tokens, string? filePath = null)
             Token lBracket = Previous(); // the '{' token
             return new Expression.MapLiteral(lBracket, entries);
         }
-
         if (Match(TokenType.LSquare))
         {
             var elements = new List<Expression>();
