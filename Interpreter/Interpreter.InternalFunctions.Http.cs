@@ -48,11 +48,6 @@ public partial class Interpreter
 
             foreach (var kvp in authMap)
             {
-                if (kvp.Key is not string key)
-                {
-                    throw new LangException($"Function 'httpGet' expects a map with string keys, but got key of type '{GetValueType(kvp.Key)}'", GetCallToken(call).Line, _filePath);
-                }
-
                 if (kvp.Value is not string value)
                 {
                     throw new LangException($"Function 'httpGet' expects a map with string values, but got value of type '{GetValueType(kvp.Value)}'", GetCallToken(call).Line, _filePath);
