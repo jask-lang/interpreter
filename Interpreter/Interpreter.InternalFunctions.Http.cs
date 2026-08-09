@@ -7,6 +7,7 @@ public partial class Interpreter
     private void initInternalFunctionsHttp()
     {
         RegisterInternalFunction("get", new() { "url", "headers" }, CallInternalFunctionHttpGet);
+        RegisterInternalFunction("post", new() { "url", "headers", "body" }, CallInternalFunctionHttpPost);
     }
 
     private StructInstance CreateStructHTTPResult(Dictionary<object, object> responseHeaders, string content, double statusCode)
@@ -21,40 +22,33 @@ public partial class Interpreter
         return new StructInstance("HttpResponse", httpResponseFields);
     }
 
-    private object? CallInternalFunctionHttpGet(Expression.Call call)
+    private StructInstance sendHTTPRequest(string function, Expression.Call call)
     {
-        if (_permissionManager.IsPermitted(Permission.Network) == false)
-        {
-            throw new LangException("Missing permission 'allow-network' for function 'get'", GetCallToken(call).Line, _filePath);
-        }
-
         object? urlObj = Evaluate(call.Arguments[0]);
         if (urlObj is not string url)
         {
-            throw new LangException($"Function 'get' expects a string but got '{GetValueType(urlObj)}'", GetCallToken(call).Line, _filePath);
+            throw new LangException($"Function '{function}' expects a string but got '{GetValueType(urlObj)}'", GetCallToken(call).Line, _filePath);
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        object? authMapObj = Evaluate(call.Arguments[1]);
 
-        // second argument is optional and should contain a map with headers
-        if (call.Arguments.Count == 2)
+        if (authMapObj is not Dictionary<object, object> authMap)
         {
-            object? authMapObj = Evaluate(call.Arguments[1]);
+            throw new LangException($"Function '{function}' expects a map, but got '{GetValueType(authMapObj)}'", GetCallToken(call).Line, _filePath);
+        }
 
-            if (authMapObj is not Dictionary<object, object> authMap)
+        var method = function == "post" ? HttpMethod.Post : HttpMethod.Get;
+
+        using var request = new HttpRequestMessage(method, url);
+
+        foreach (var kvp in authMap)
+        {
+            if (kvp.Value is not string value)
             {
-                throw new LangException($"Function 'get' expects a map, but got '{GetValueType(authMapObj)}'", GetCallToken(call).Line, _filePath);
+                throw new LangException($"Function '{function}' expects a map with string values, but got value of type '{GetValueType(kvp.Value)}'", GetCallToken(call).Line, _filePath);
             }
 
-            foreach (var kvp in authMap)
-            {
-                if (kvp.Value is not string value)
-                {
-                    throw new LangException($"Function 'get' expects a map with string values, but got value of type '{GetValueType(kvp.Value)}'", GetCallToken(call).Line, _filePath);
-                }
-
-                request.Headers.TryAddWithoutValidation((string)kvp.Key, value);
-            }
+            request.Headers.TryAddWithoutValidation((string)kvp.Key, value);
         }
 
         try
@@ -79,7 +73,27 @@ public partial class Interpreter
         }
         catch (Exception ex)
         {
-            return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Function 'get' failed to fetch URL '{url}': {ex.Message}");
+            return createStructInstanceFromResult(ResultType.NOT_OK, null, $"Function '{function}' failed to fetch '{request.RequestUri}': {ex.Message}");
         }
+    }
+
+    private object? CallInternalFunctionHttpGet(Expression.Call call)
+    {
+        if (_permissionManager.IsPermitted(Permission.Network) == false)
+        {
+            throw new LangException("Missing permission 'allow-network' for function 'get'", GetCallToken(call).Line, _filePath);
+        }
+
+        return sendHTTPRequest("get", call);
+    }
+
+    private object? CallInternalFunctionHttpPost(Expression.Call call)
+    {
+        if (_permissionManager.IsPermitted(Permission.Network) == false)
+        {
+            throw new LangException("Missing permission 'allow-network' for function 'post'", GetCallToken(call).Line, _filePath);
+        }
+
+        return sendHTTPRequest("post", call);
     }
 }
