@@ -291,6 +291,9 @@ public partial class Interpreter
 
             "getFields" => new() { "struct" },
             "hasField"  => new() { "struct", "field" },
+
+            "httpGet" => new() { "url", "headers" },
+
             _ => throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath)
         };
     }
