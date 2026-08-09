@@ -21,9 +21,9 @@ public partial class Interpreter
 {
     private void initInternalFunctionsTrustEngine()
     {
-        _internalFunctions["trust"] = CallInternalFunctionTrust;
-        _internalFunctions["verify"] = CallInternalFunctionVerify;
-        _internalFunctions["untrust"] = CallInternalFunctionUntrust;
+        RegisterInternalFunction("trust", new() { "untrustedValue" }, CallInternalFunctionTrust);
+        RegisterInternalFunction("verify", new() { "untrustedValue", "pattern" }, CallInternalFunctionVerify);
+        RegisterInternalFunction("untrust", new() { "value" }, CallInternalFunctionUntrust);
     }
 
     private object? CallInternalFunctionTrust(Expression.Call call)

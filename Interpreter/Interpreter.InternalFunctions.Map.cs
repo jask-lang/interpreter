@@ -4,15 +4,15 @@ public partial class Interpreter
 {
     private void initInternalFunctionsMap()
     {
-        _internalFunctions["map"]          = CallInternalFunctionMap;
-        _internalFunctions["mapGet"]       = CallInternalFunctionMapGet;
-        _internalFunctions["mapSet"]       = CallInternalFunctionMapSet;
-        _internalFunctions["mapGetKeys"]   = CallInternalFunctionMapGetKeys;
-        _internalFunctions["mapGetValues"] = CallInternalFunctionMapGetValues;
-        _internalFunctions["mapHasKey"]    = CallInternalFunctionMapHasKey;
-        _internalFunctions["mapSize"]      = CallInternalFunctionMapSize;
-        _internalFunctions["mapRemove"]    = CallInternalFunctionMapRemove;
-        _internalFunctions["mapMerge"]     = CallInternalFunctionMapMerge;
+        RegisterInternalFunction("map", new() { "keys", "values" }, CallInternalFunctionMap);
+        RegisterInternalFunction("mapGet", new() { "map", "key" }, CallInternalFunctionMapGet);
+        RegisterInternalFunction("mapSet", new() { "map", "key", "value" }, CallInternalFunctionMapSet);
+        RegisterInternalFunction("mapGetKeys", new() { "map" }, CallInternalFunctionMapGetKeys);
+        RegisterInternalFunction("mapGetValues", new() { "map" }, CallInternalFunctionMapGetValues);
+        RegisterInternalFunction("mapHasKey", new() { "map", "key" }, CallInternalFunctionMapHasKey);
+        RegisterInternalFunction("mapSize", new() { "map" }, CallInternalFunctionMapSize);
+        RegisterInternalFunction("mapRemove", new() { "map", "key" }, CallInternalFunctionMapRemove);
+        RegisterInternalFunction("mapMerge", new() {"map1", "map2" }, CallInternalFunctionMapMerge);
     }
 
     private Dictionary<object, object> copyMap(Dictionary<object, object> map)

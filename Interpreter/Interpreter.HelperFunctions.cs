@@ -242,60 +242,12 @@ public partial class Interpreter
 
     private List<string> GetInternalFunctionParameterNames(string funcName)
     {
-        return funcName switch
+        if (_internalFunctionParamNames.TryGetValue(funcName, out var paramNames))
         {
-            "exit"     => new() { "code" },
-            "assert"   => new() { "condition" },
-            "sleepFor" => new() { "seconds" },
-            "type"     => new() { "variable" },
+            return paramNames;
+        }
 
-            "round" => new() { "number" },
-            "floor" => new() { "number" },
-            "ceil"  => new() { "number" },
-
-            "charCode"           => new() { "ch" },
-            "charFromCode"       => new() { "code" },
-            "charToUpper"        => new() { "ch" },
-            "charToLower"        => new() { "ch" },
-            "charCount"          => new() { "s" },
-            "charAt"             => new() { "s", "index" },
-
-            "toNumber" => new() { "value" },
-            "toString" => new() { "value" },
-
-            "readInput" => new() { "prompt" },
-            "readFile"  => new() { "file" },
-
-            "trust"     => new() { "untrusted" },
-            "verify"    => new() { "untrusted", "pattern" },
-            "untrusted" => new() { "value" },
-
-            "listSize"     => new() { "list" },
-            "listAdd"      => new() { "list", "element" },
-            "listGet"      => new() { "list", "index" },
-            "listGetRange" => new() { "list", "indexStart", "indexEnd" },
-            "listSet"      => new() { "list", "index", "element" },
-            "listRemove"   => new() { "list", "index" },
-            "listReverse"  => new() { "list" },
-            "listExtend"   => new() { "list", "expander" },
-
-            "map"          => new() { "keys", "values" },
-            "mapGet"       => new() { "map", "key" },
-            "mapSet"       => new() { "map", "key", "value" },
-            "mapGetKeys"   => new() { "map" },
-            "mapGetValues" => new() { "map" },
-            "mapHasKey"    => new() { "map", "key" },
-            "mapSize"      => new() { "map" },
-            "mapRemove"    => new() { "map", "key" },
-            "mapMerge"     => new() { "map1", "map2" },
-
-            "getFields" => new() { "struct" },
-            "hasField"  => new() { "struct", "field" },
-
-            "httpGet" => new() { "url", "headers" },
-
-            _ => throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath)
-        };
+        throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath);
     }
 
     private StructInstance createStructInstanceFromResult(ResultType result, object? value, string? error = null)

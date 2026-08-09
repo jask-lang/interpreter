@@ -6,7 +6,7 @@ public partial class Interpreter
 {
     private void initInternalFunctionsModule()
     {
-        _internalFunctions["unfoldModule"] = CallInternalFunctionUnfoldModule;
+        RegisterInternalFunction("unfoldModule", new() { "alias" }, CallInternalFunctionUnfoldModule);
     }
 
     private object? CallInternalFunctionUnfoldModule(Expression.Call call)

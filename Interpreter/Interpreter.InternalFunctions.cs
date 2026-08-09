@@ -12,35 +12,49 @@ public partial class Interpreter
     // dictionary for internal functions: name -> delegate
     private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = [];
 
+    // dictionary for internal function named parameters: name -> list of param names
+    private readonly Dictionary<string, List<string>> _internalFunctionParamNames = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly HashSet<string> _loadedInternalFunctionGroups = new(StringComparer.OrdinalIgnoreCase);
+
+    private void RegisterInternalFunction(string name, InternalFunctionDelegate func)
+    {
+        _internalFunctions[name] = func;
+    }
+
+    private void RegisterInternalFunction(string name, List<string> paramNames, InternalFunctionDelegate func)
+    {
+        _internalFunctions[name] = func;
+        _internalFunctionParamNames[name] = paramNames;
+    }
 
     private void initInternalFunctions()
     {
         // standard functions
-        _internalFunctions["print"]     = CallInternalFunctionPrint;
-        _internalFunctions["printLine"] = CallInternalFunctionPrintLine;
-        _internalFunctions["type"]      = CallInternalFunctionType;
-        _internalFunctions["clock"]     = CallInternalFunctionClock;
-        _internalFunctions["exit"]      = CallInternalFunctionExit;
-        _internalFunctions["assert"]    = CallInternalFunctionAssert;
-        _internalFunctions["sleepFor"]  = CallInternalFunctionSleepFor;
+        RegisterInternalFunction("print", CallInternalFunctionPrint);
+        RegisterInternalFunction("printLine", CallInternalFunctionPrintLine);
+        RegisterInternalFunction("type", new() { "variable" }, CallInternalFunctionType);
+        RegisterInternalFunction("clock", CallInternalFunctionClock);
+        RegisterInternalFunction("exit", new() { "code" }, CallInternalFunctionExit);
+        RegisterInternalFunction("assert", new() { "condition" }, CallInternalFunctionAssert);
+        RegisterInternalFunction("sleepFor", new() { "seconds" }, CallInternalFunctionSleepFor);
 
         // variable convertions
-        _internalFunctions["toNumber"] = CallInternalFunctionToNumber;
-        _internalFunctions["toString"] = CallInternalFunctionToString;
+        RegisterInternalFunction("toNumber", new() { "value" }, CallInternalFunctionToNumber);
+        RegisterInternalFunction("toString", new() { "value" }, CallInternalFunctionToString);
 
         // math functions
-        _internalFunctions["round"] = CallInternalFunctionRound;
-        _internalFunctions["floor"] = CallInternalFunctionFloor;
-        _internalFunctions["ceil"]  = CallInternalFunctionCeil;
+        RegisterInternalFunction("round", new() { "number" }, CallInternalFunctionRound);
+        RegisterInternalFunction("floor", new() { "number" }, CallInternalFunctionFloor);
+        RegisterInternalFunction("ceil", new() { "number" }, CallInternalFunctionCeil);
 
         // string functions
-        _internalFunctions["charCode"]           = CallInternalFunctionCharCode;
-        _internalFunctions["charFromCode"]       = CallInternalFunctionCharFromCode;
-        _internalFunctions["charToUpper"]        = CallInternalFunctionCharToUpper;
-        _internalFunctions["charToLower"]        = CallInternalFunctionCharToLower;
-        _internalFunctions["charCount"]          = CallInternalFunctionCharCount;
-        _internalFunctions["charAt"]             = CallInternalFunctionCharAt;
+        RegisterInternalFunction("charCode", new() { "ch" }, CallInternalFunctionCharCode);
+        RegisterInternalFunction("charFromCode", new() { "code" }, CallInternalFunctionCharFromCode);
+        RegisterInternalFunction("charToUpper", new() { "ch" }, CallInternalFunctionCharToUpper);
+        RegisterInternalFunction("charToLower", new() { "ch" }, CallInternalFunctionCharToLower);
+        RegisterInternalFunction("charCount", new() { "s" }, CallInternalFunctionCharCount);
+        RegisterInternalFunction("charAt", new() { "s", "index" }, CallInternalFunctionCharAt);
 
         // list functions
         initInternalFunctionsList();

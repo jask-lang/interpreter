@@ -4,16 +4,16 @@ public partial class Interpreter
 {
     private void initInternalFunctionsList()
     {
-        _internalFunctions["list"]            = CallInternalFunctionList;
-        _internalFunctions["listSize"]        = CallInternalFunctionListSize;
-        _internalFunctions["listAdd"]         = CallInternalFunctionListAdd;
-        _internalFunctions["listGet"]         = CallInternalFunctionListGet;
-        _internalFunctions["listGetRange"]    = CallInternalFunctionListGetRange;
-        _internalFunctions["listSet"]         = CallInternalFunctionListSet;
-        _internalFunctions["listRemove"]      = CallInternalFunctionListRemove;
-        _internalFunctions["listReverse"]     = CallInternalFunctionListReverse;
-        _internalFunctions["listExtend"]      = CallInternalFunctionListExtend;
-        _internalFunctions["listCreateRange"] = CallInternalFunctionListCreateRange;
+        RegisterInternalFunction("list", CallInternalFunctionList);
+        RegisterInternalFunction("listSize", new() { "list" }, CallInternalFunctionListSize);
+        RegisterInternalFunction("listAdd", new() { "list", "element" }, CallInternalFunctionListAdd);
+        RegisterInternalFunction("listGet", new() { "list", "index" }, CallInternalFunctionListGet);
+        RegisterInternalFunction("listGetRange", new() { "list", "indexStart", "indexEnd" }, CallInternalFunctionListGetRange);
+        RegisterInternalFunction("listSet", new() { "list", "index", "element" }, CallInternalFunctionListSet);
+        RegisterInternalFunction("listRemove", new() { "list", "index" }, CallInternalFunctionListRemove);
+        RegisterInternalFunction("listReverse", new() { "list" }, CallInternalFunctionListReverse);
+        RegisterInternalFunction("listExtend", new() { "list", "elements" }, CallInternalFunctionListExtend);
+        RegisterInternalFunction("listCreateRange", new() { "start", "end" }, CallInternalFunctionListCreateRange);
     }
 
     private object? CallInternalFunctionList(Expression.Call call)
