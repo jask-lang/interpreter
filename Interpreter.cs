@@ -273,8 +273,8 @@ public partial class Interpreter
             case Statement.Struct s:
                 var structKey = s.Name.Lexeme;
 
-                // look into existing struct definitions and check for 'Result' since it is reserved for the interpreter
-                if (_structs.ContainsKey(structKey) || structKey == "Result" || structKey == "MapEntry")
+                // look into existing struct definitions and check for reserved interpreter structs
+                if (_structs.ContainsKey(structKey) || structKey == "Result" || structKey == "MapEntry" || structKey == "HttpResponse")
                 {
                     throw new LangException($"Struct '{s.Name.Lexeme}' is already defined", s.Name.Line, _filePath);
                 }
@@ -331,7 +331,8 @@ public partial class Interpreter
 
                 string modulePath = (string)value;
 
-                if (modulePath.EndsWith(".jask") == false)
+                bool isInternalModule = modulePath.Equals("jcore/http", StringComparison.OrdinalIgnoreCase);
+                if (isInternalModule == false && modulePath.EndsWith(".jask") == false)
                 {
                     modulePath += ".jask";
                 }
@@ -344,6 +345,16 @@ public partial class Interpreter
                 if (_modules.ContainsKey(u.Alias.Lexeme))
                 {
                     throw new LangException($"Module alias '{u.Alias.Lexeme}' is already in use", u.Alias.Line, _filePath);
+                }
+
+                if (isInternalModule)
+                {
+                    EnsureInternalFunctionGroupLoaded(modulePath);
+
+                    var moduleInterpreter = new Interpreter(_modulesLoading, _baseDirectory, _processDirectory, modulePath, _permissionManager);
+                    moduleInterpreter.EnsureInternalFunctionGroupLoaded(modulePath);
+                    _modules[u.Alias.Lexeme] = moduleInterpreter;
+                    break;
                 }
 
                 // try embedded jcore modules first

@@ -4,8 +4,15 @@ public partial class Interpreter
 {
     public delegate object? InternalFunctionDelegate(Expression.Call call);
 
+    private static readonly Dictionary<string, Action<Interpreter>> _internalFunctionModuleLoaders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["jcore/http"] = static interpreter => interpreter.initInternalFunctionsHttp()
+    };
+
     // dictionary for internal functions: name -> delegate
     private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = [];
+
+    private readonly HashSet<string> _loadedInternalFunctionGroups = new(StringComparer.OrdinalIgnoreCase);
 
     private void initInternalFunctions()
     {
@@ -52,6 +59,20 @@ public partial class Interpreter
 
         // IO functions
         initInternalFunctionsIO();
+    }
+
+    private void EnsureInternalFunctionGroupLoaded(string modulePath)
+    {
+        if (_loadedInternalFunctionGroups.Contains(modulePath))
+        {
+            return;
+        }
+
+        if (_internalFunctionModuleLoaders.TryGetValue(modulePath, out var loader))
+        {
+            loader(this);
+            _loadedInternalFunctionGroups.Add(modulePath);
+        }
     }
 
     private Token GetCallToken(Expression.Call call) => ((Expression.Variable)call.Callee).Name;
