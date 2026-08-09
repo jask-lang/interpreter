@@ -121,16 +121,6 @@ public partial class Interpreter
         throw new LangException($"Operator '{op.Lexeme}' expects a number, but received '{Stringify(value)}'", op.Line, _filePath);
     }
 
-    private double CheckNumberStmt(Token context, object? value, string label)
-    {
-        if (value is double d)
-        {
-            return d;
-        }
-
-        throw new LangException($"{label} must be a number, but is a '{Stringify(value)}'", context.Line, _filePath);
-    }
-
     public static string Stringify(object? value)
     {
         if (value is null) return "nil";
