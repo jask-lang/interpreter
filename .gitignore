@@ -434,3 +434,6 @@ FodyWeavers.xsd
 # other project specific files
 examples/
 example.jask
+TODO.txt
+package.json
+package-lock.json
