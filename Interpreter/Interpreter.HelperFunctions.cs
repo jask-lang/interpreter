@@ -204,8 +204,6 @@ public partial class Interpreter
             return result.ToString();
         }
 
-        if (value is string s) return "\"" + s + "\"";
-
         return value.ToString() ?? "nil";
     }
 
