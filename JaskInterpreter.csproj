@@ -19,6 +19,18 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="SetGitCommitHash" BeforeTargets="BeforeCompile">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitHash" />
+    </Exec>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitCommitHash</_Parameter1>
+        <_Parameter2>$(GitCommitHash)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <EmbeddedResource Include="$(MSBuildThisFileDirectory)../jcore/*.jask" />
   </ItemGroup>

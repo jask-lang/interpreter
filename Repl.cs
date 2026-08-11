@@ -280,16 +280,24 @@ static class Repl
 
     public static void PrintVersionMessage(string version)
     {
-        Console.WriteLine($"\x1b[38;5;208mjask\x1b[0m lang interpreter {version} (build {GetBuildDate()})");
+        Console.WriteLine($"\x1b[38;5;208mjask\x1b[0m lang interpreter {version} ({GetBuildHashAndTime()})");
     }
 
-    static string GetBuildDate()
+    static string GetBuildHashAndTime()
     {
         var assembly = Assembly.GetExecutingAssembly();
-        return assembly
+        
+        var buildHash = assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attr => attr.Key == "GitCommitHash")
+            ?.Value ?? "Unknown";
+        
+        var buildTime = assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(attr => attr.Key == "BuildDate")
             ?.Value ?? "Unknown";
+
+        return "commit " + buildHash + " build on " + buildTime;
     }
 
     static string ReadLine(List<string> history, int indentationLevel)
