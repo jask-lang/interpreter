@@ -4,15 +4,15 @@ public partial class Interpreter
 {
     private void initInternalFunctionsMap()
     {
-        RegisterInternalFunction("map", new() { "keys", "values" }, CallInternalFunctionMap);
-        RegisterInternalFunction("mapGet", new() { "map", "key" }, CallInternalFunctionMapGet);
-        RegisterInternalFunction("mapSet", new() { "map", "key", "value" }, CallInternalFunctionMapSet);
-        RegisterInternalFunction("mapGetKeys", new() { "map" }, CallInternalFunctionMapGetKeys);
-        RegisterInternalFunction("mapGetValues", new() { "map" }, CallInternalFunctionMapGetValues);
-        RegisterInternalFunction("mapHasKey", new() { "map", "key" }, CallInternalFunctionMapHasKey);
-        RegisterInternalFunction("mapSize", new() { "map" }, CallInternalFunctionMapSize);
-        RegisterInternalFunction("mapRemove", new() { "map", "key" }, CallInternalFunctionMapRemove);
-        RegisterInternalFunction("mapMerge", new() {"map1", "map2" }, CallInternalFunctionMapMerge);
+        RegisterInternalFunction("map",          new List<(string, string)> { ("keys", "list"), ("values", "list") },                CallInternalFunctionMap);
+        RegisterInternalFunction("mapGet",       new List<(string, string)> { ("map", "map"), ("key", "string") },                   CallInternalFunctionMapGet);
+        RegisterInternalFunction("mapSet",       new List<(string, string)> { ("map", "map"), ("key", "string"), ("value", "any") }, CallInternalFunctionMapSet);
+        RegisterInternalFunction("mapGetKeys",   new List<(string, string)> { ("map", "map") },                                      CallInternalFunctionMapGetKeys);
+        RegisterInternalFunction("mapGetValues", new List<(string, string)> { ("map", "map") },                                      CallInternalFunctionMapGetValues);
+        RegisterInternalFunction("mapHasKey",    new List<(string, string)> { ("map", "map"), ("key", "string") },                   CallInternalFunctionMapHasKey);
+        RegisterInternalFunction("mapSize",      new List<(string, string)> { ("map", "map") },                                      CallInternalFunctionMapSize);
+        RegisterInternalFunction("mapRemove",    new List<(string, string)> { ("map", "map"), ("key", "string") },                   CallInternalFunctionMapRemove);
+        RegisterInternalFunction("mapMerge",     new List<(string, string)> { ("map1", "map"), ("map2", "map") },                    CallInternalFunctionMapMerge);
     }
 
     private Dictionary<object, object> copyMap(Dictionary<object, object> map)

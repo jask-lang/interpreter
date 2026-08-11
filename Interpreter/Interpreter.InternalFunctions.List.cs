@@ -4,16 +4,16 @@ public partial class Interpreter
 {
     private void initInternalFunctionsList()
     {
-        RegisterInternalFunction("list", CallInternalFunctionList);
-        RegisterInternalFunction("listSize", new() { "list" }, CallInternalFunctionListSize);
-        RegisterInternalFunction("listAdd", new() { "list", "element" }, CallInternalFunctionListAdd);
-        RegisterInternalFunction("listGet", new() { "list", "index" }, CallInternalFunctionListGet);
-        RegisterInternalFunction("listGetRange", new() { "list", "indexStart", "indexEnd" }, CallInternalFunctionListGetRange);
-        RegisterInternalFunction("listSet", new() { "list", "index", "element" }, CallInternalFunctionListSet);
-        RegisterInternalFunction("listRemove", new() { "list", "index" }, CallInternalFunctionListRemove);
-        RegisterInternalFunction("listReverse", new() { "list" }, CallInternalFunctionListReverse);
-        RegisterInternalFunction("listExtend", new() { "list", "elements" }, CallInternalFunctionListExtend);
-        RegisterInternalFunction("listCreateRange", new() { "start", "end" }, CallInternalFunctionListCreateRange);
+        RegisterInternalFunction("list",                                                                                                               CallInternalFunctionList);
+        RegisterInternalFunction("listSize",        new List<(string, string)> { ("list", "list") },                                                   CallInternalFunctionListSize);
+        RegisterInternalFunction("listAdd",         new List<(string, string)> { ("list", "list"), ("element", "any") },                               CallInternalFunctionListAdd);
+        RegisterInternalFunction("listGet",         new List<(string, string)> { ("list", "list"), ("index", "number") },                              CallInternalFunctionListGet);
+        RegisterInternalFunction("listGetRange",    new List<(string, string)> { ("list", "list"), ("indexStart", "number"), ("indexEnd", "number") }, CallInternalFunctionListGetRange);
+        RegisterInternalFunction("listSet",         new List<(string, string)> { ("list", "list"), ("index", "number"), ("element", "any") },          CallInternalFunctionListSet);
+        RegisterInternalFunction("listRemove",      new List<(string, string)> { ("list", "list"), ("index", "number") },                              CallInternalFunctionListRemove);
+        RegisterInternalFunction("listReverse",     new List<(string, string)> { ("list", "list") },                                                   CallInternalFunctionListReverse);
+        RegisterInternalFunction("listExtend",      new List<(string, string)> { ("list", "list"), ("elements", "list") },                             CallInternalFunctionListExtend);
+        RegisterInternalFunction("listCreateRange", new List<(string, string)> { ("start", "number"), ("end", "number") },                             CallInternalFunctionListCreateRange);
     }
 
     private object? CallInternalFunctionList(Expression.Call call)

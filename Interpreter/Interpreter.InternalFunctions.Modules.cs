@@ -6,7 +6,7 @@ public partial class Interpreter
 {
     private void initInternalFunctionsModule()
     {
-        RegisterInternalFunction("unfoldModule", new() { "alias" }, CallInternalFunctionUnfoldModule);
+        RegisterInternalFunction("unfoldModule", new List<(string, string)> { ("alias", "any") }, CallInternalFunctionUnfoldModule);
     }
 
     private object? CallInternalFunctionUnfoldModule(Expression.Call call)
@@ -74,12 +74,12 @@ public partial class Interpreter
         builder.Append("\n");
 
         builder.Append("--- Function definitions ---\n");
-        if (module._functions.Count() == 0)
+        bool hasAnyFunctions = false;
+
+        // user defined functions
+        if (module._functions.Count > 0)
         {
-            builder.Append('/');
-        }
-        else
-        {
+            hasAnyFunctions = true;
             foreach (var func in module._functions)
             {
                 builder.Append(func.Key.Split('(')[0]);
@@ -122,6 +122,40 @@ public partial class Interpreter
 
             // remove last \n from string
             builder.Remove(builder.Length - 1, 1);
+        }
+
+        // internal module group functions (e.g jcore/http::get etc.)
+        if (module._internalFunctionModuleGroups.Count > 0)
+        {
+            hasAnyFunctions = true;
+            var allFuncNames = module._internalFunctionModuleGroups.SelectMany(g => g.Value).Distinct().ToList();
+            foreach (var funcName in allFuncNames)
+            {
+                builder.Append(funcName);
+                builder.Append("(");
+
+                if (module._internalFunctionParamNames.TryGetValue(funcName, out var paramsWithTypes) && paramsWithTypes.Count > 0)
+                {
+                    for (int i = 0; i < paramsWithTypes.Count; i++)
+                    {
+                        builder.Append(paramsWithTypes[i].Name + ": " + paramsWithTypes[i].Type);
+                        if (i != paramsWithTypes.Count - 1)
+                        {
+                            builder.Append(", ");
+                        }
+                    }
+                }
+
+                builder.Append(")\n");
+            }
+
+            // remove last \n from string
+            builder.Remove(builder.Length - 1, 1);
+        }
+
+        if (!hasAnyFunctions)
+        {
+            builder.Append('/');
         }
 
         return builder.ToString();

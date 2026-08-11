@@ -4,10 +4,10 @@ public partial class Interpreter
 {
     private void initInternalFunctionsIO()
     {
-        RegisterInternalFunction("readInput", new() { "prompt" }, CallInternalFunctionReadInput);
-        RegisterInternalFunction("readFile",  new() { "file" }, CallInternalFunctionReadFile);
-        RegisterInternalFunction("writeFile", new() { "file", "content" }, CallInternalFunctionWriteFile);
-        RegisterInternalFunction("fileExists", new() { "file" }, CallInternalFunctionFileExists);
+        RegisterInternalFunction("readInput",  new List<(string, string)> { ("prompt", "string") },                      CallInternalFunctionReadInput);
+        RegisterInternalFunction("readFile",   new List<(string, string)> { ("file", "string") },                        CallInternalFunctionReadFile);
+        RegisterInternalFunction("writeFile",  new List<(string, string)> { ("file", "string"), ("content", "string") }, CallInternalFunctionWriteFile);
+        RegisterInternalFunction("fileExists", new List<(string, string)> { ("file", "string") },                        CallInternalFunctionFileExists);
     }
 
     /// <summary>

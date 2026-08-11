@@ -12,49 +12,57 @@ public partial class Interpreter
     // dictionary for internal functions: name -> delegate
     private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = [];
 
-    // dictionary for internal function named parameters: name -> list of param names
-    private readonly Dictionary<string, List<string>> _internalFunctionParamNames = new(StringComparer.OrdinalIgnoreCase);
+    // dictionary for internal function named parameters: name -> list of (paramName, paramType) tuples
+    private readonly Dictionary<string, List<(string Name, string Type)>> _internalFunctionParamNames = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly HashSet<string> _loadedInternalFunctionGroups = new(StringComparer.OrdinalIgnoreCase);
+
+    // tracks which internal function names were added by each module group loader
+    private readonly Dictionary<string, List<string>> _internalFunctionModuleGroups = new(StringComparer.OrdinalIgnoreCase);
 
     private void RegisterInternalFunction(string name, InternalFunctionDelegate func)
     {
         _internalFunctions[name] = func;
     }
 
-    private void RegisterInternalFunction(string name, List<string> paramNames, InternalFunctionDelegate func)
+    private void RegisterInternalFunction(string name, List<(string Name, string Type)> paramsWithTypes, InternalFunctionDelegate func)
     {
         _internalFunctions[name] = func;
-        _internalFunctionParamNames[name] = paramNames;
+        _internalFunctionParamNames[name] = paramsWithTypes;
     }
 
+    // these internal implemented functions are always available and do not need a use...as statement
     private void initInternalFunctions()
     {
-        // standard functions
-        RegisterInternalFunction("print", CallInternalFunctionPrint);
+        // standard functions with variadic parameterization
+        RegisterInternalFunction("print",     CallInternalFunctionPrint);
         RegisterInternalFunction("printLine", CallInternalFunctionPrintLine);
-        RegisterInternalFunction("type", new() { "variable" }, CallInternalFunctionType);
+
+        // standard functions without parameters
         RegisterInternalFunction("clock", CallInternalFunctionClock);
-        RegisterInternalFunction("exit", new() { "code" }, CallInternalFunctionExit);
-        RegisterInternalFunction("assert", new() { "condition" }, CallInternalFunctionAssert);
-        RegisterInternalFunction("sleepFor", new() { "seconds" }, CallInternalFunctionSleepFor);
+
+        // standard functions without variadic parameterization
+        RegisterInternalFunction("type",     new List<(string, string)> { ("variable", "any") },      CallInternalFunctionType);
+        RegisterInternalFunction("exit",     new List<(string, string)> { ("code", "number") },       CallInternalFunctionExit);
+        RegisterInternalFunction("assert",   new List<(string, string)> { ("condition", "boolean") }, CallInternalFunctionAssert);
+        RegisterInternalFunction("sleepFor", new List<(string, string)> { ("seconds", "number") },    CallInternalFunctionSleepFor);
 
         // variable convertions
-        RegisterInternalFunction("toNumber", new() { "value" }, CallInternalFunctionToNumber);
-        RegisterInternalFunction("toString", new() { "value" }, CallInternalFunctionToString);
+        RegisterInternalFunction("toNumber", new List<(string, string)> { ("value", "any") }, CallInternalFunctionToNumber);
+        RegisterInternalFunction("toString", new List<(string, string)> { ("value", "any") }, CallInternalFunctionToString);
 
-        // math functions
-        RegisterInternalFunction("round", new() { "number" }, CallInternalFunctionRound);
-        RegisterInternalFunction("floor", new() { "number" }, CallInternalFunctionFloor);
-        RegisterInternalFunction("ceil", new() { "number" }, CallInternalFunctionCeil);
+        // basic math functions, needed for jcore/math
+        RegisterInternalFunction("round", new List<(string, string)> { ("number", "number") }, CallInternalFunctionRound);
+        RegisterInternalFunction("floor", new List<(string, string)> { ("number", "number") }, CallInternalFunctionFloor);
+        RegisterInternalFunction("ceil",  new List<(string, string)> { ("number", "number") }, CallInternalFunctionCeil);
 
-        // string functions
-        RegisterInternalFunction("charCode", new() { "ch" }, CallInternalFunctionCharCode);
-        RegisterInternalFunction("charFromCode", new() { "code" }, CallInternalFunctionCharFromCode);
-        RegisterInternalFunction("charToUpper", new() { "ch" }, CallInternalFunctionCharToUpper);
-        RegisterInternalFunction("charToLower", new() { "ch" }, CallInternalFunctionCharToLower);
-        RegisterInternalFunction("charCount", new() { "s" }, CallInternalFunctionCharCount);
-        RegisterInternalFunction("charAt", new() { "s", "index" }, CallInternalFunctionCharAt);
+        // string functions, needed for jcore/string
+        RegisterInternalFunction("charCode",     new List<(string, string)> { ("ch", "string") },                     CallInternalFunctionCharCode);
+        RegisterInternalFunction("charFromCode", new List<(string, string)> { ("code", "number") },                   CallInternalFunctionCharFromCode);
+        RegisterInternalFunction("charToUpper",  new List<(string, string)> { ("ch", "string") },                     CallInternalFunctionCharToUpper);
+        RegisterInternalFunction("charToLower",  new List<(string, string)> { ("ch", "string") },                     CallInternalFunctionCharToLower);
+        RegisterInternalFunction("charCount",    new List<(string, string)> { ("s", "string") },                      CallInternalFunctionCharCount);
+        RegisterInternalFunction("charAt",       new List<(string, string)> { ("s", "string"), ("index", "number") }, CallInternalFunctionCharAt);
 
         // list functions
         initInternalFunctionsList();
@@ -75,7 +83,7 @@ public partial class Interpreter
         initInternalFunctionsIO();
     }
 
-    private void EnsureInternalFunctionGroupLoaded(string modulePath)
+    private void EnsureInternalFunctionGroupLoaded(string modulePath, bool trackGroup = true)
     {
         if (_loadedInternalFunctionGroups.Contains(modulePath))
         {
@@ -84,7 +92,15 @@ public partial class Interpreter
 
         if (_internalFunctionModuleLoaders.TryGetValue(modulePath, out var loader))
         {
+            var funcsBefore = _internalFunctions.Keys.ToHashSet();
             loader(this);
+            
+            if (trackGroup)
+            {
+                var funcsAdded = _internalFunctions.Keys.Except(funcsBefore).ToList();
+                _internalFunctionModuleGroups[modulePath] = funcsAdded;
+            }
+
             _loadedInternalFunctionGroups.Add(modulePath);
         }
     }

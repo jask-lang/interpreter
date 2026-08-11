@@ -6,8 +6,8 @@ public partial class Interpreter
 
     private void initInternalFunctionsHttp()
     {
-        RegisterInternalFunction("get", new() { "url", "headers" }, CallInternalFunctionHttpGet);
-        RegisterInternalFunction("post", new() { "url", "headers", "body" }, CallInternalFunctionHttpPost);
+        RegisterInternalFunction("get",  new List<(string, string)> { ("url", "string"), ("headers", "map") },                     CallInternalFunctionHttpGet);
+        RegisterInternalFunction("post", new List<(string, string)> { ("url", "string"), ("headers", "map"), ("body", "string") }, CallInternalFunctionHttpPost);
     }
 
     private StructInstance CreateStructHTTPResult(Dictionary<object, object> responseHeaders, string content, double statusCode)

@@ -4,8 +4,8 @@ public partial class Interpreter
 {
     private void initInternalFunctionsStruct()
     {
-        RegisterInternalFunction("getFields", new() { "struct" }, CallInternalFunctionGetFields);
-        RegisterInternalFunction("hasField", new() { "struct", "field" }, CallInternalFunctionHasField);
+        RegisterInternalFunction("getFields", new List<(string, string)> { ("struct", "struct") },                      CallInternalFunctionGetFields);
+        RegisterInternalFunction("hasField",  new List<(string, string)> { ("struct", "struct"), ("field", "string") }, CallInternalFunctionHasField);
     }
 
     private object? CallInternalFunctionGetFields(Expression.Call call)
