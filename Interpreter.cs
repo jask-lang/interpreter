@@ -435,6 +435,29 @@ public partial class Interpreter
                 object? returnValue = r.Value != null ? Evaluate(r.Value) : null;
                 throw new ReturnException(returnValue);
 
+            case Statement.TryCatch tc:
+                try
+                {
+                    foreach (var s in tc.Body) Execute(s);
+                }
+                catch (LangException le)
+                {
+                    var errorFields = new Dictionary<string, object?>
+                    {
+                        { "message", le.Message },
+                        { "line", (double)le.Line },
+                        { "file", (object?)le.FilePath ?? null }
+                    };
+
+                    if (tc.ErrorVar != null)
+                    {
+                        CurrentEnvironment[tc.ErrorVar.Lexeme] = new StructInstance("Error", errorFields);
+                    }
+
+                    foreach (var s in tc.CatchBody) Execute(s);
+                }
+                break;
+
             default:
                 throw new LangException($"Unknown statement: {statement}", 0, _filePath);
         }
