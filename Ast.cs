@@ -64,4 +64,6 @@ public abstract record Statement
     public record Return(JaskLang.Expression? Value) : Statement;
 
     public record Struct(Token Name, List<Statement> Body) : Statement;
+    
+    public record TryCatch(List<Statement> Body, Token? ErrorVar, List<Statement> CatchBody) : Statement;
 }

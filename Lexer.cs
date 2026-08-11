@@ -39,6 +39,9 @@ public class Lexer
         ["or"]          = TokenType.Or,
         ["not"]         = TokenType.Not,
         ["is"]          = TokenType.Is,
+        ["try"]         = TokenType.Try,
+        ["catch"]       = TokenType.Catch,
+        ["endtry"]      = TokenType.EndTry,
     };
 
     public Lexer(string source, bool isInteractiveMode, string? filePath = null)

@@ -31,6 +31,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
         if (Match(TokenType.Return))   return ReturnStatement();
         if (Match(TokenType.Break))    return new Statement.Break();
         if (Match(TokenType.Continue)) return new Statement.Continue();
+        if (Match(TokenType.Try))      return TryStatement();
 
         // try to parse as expression statement
         return new Statement.Expression(Expression());
@@ -230,12 +231,42 @@ public class Parser(List<Token> tokens, string? filePath = null)
             Check(TokenType.EndFor)      == false &&
             Check(TokenType.Else)        == false &&
             Check(TokenType.Break)       == false &&
+            Check(TokenType.EndTry)      == false &&
             IsAtEnd()                    == false)
         {
             value = Expression();
         }
 
         return new Statement.Return(value);
+    }
+
+    private Statement TryStatement()
+    {
+        var body = new List<Statement>();
+        while (Check(TokenType.Catch) == false && Check(TokenType.EndTry) == false && IsAtEnd() == false)
+        {
+            body.Add(Statement());
+        }
+
+        Token? errorVar = null;
+        if (Match(TokenType.Catch))
+        {
+            if (Check(TokenType.Identifier))
+            {
+                errorVar = Advance();
+            }
+
+            var catchBody = new List<Statement>();
+            while (Check(TokenType.EndTry) == false && IsAtEnd() == false)
+            {
+                catchBody.Add(Statement());
+            }
+
+            Consume(TokenType.EndTry, "Expected 'endtry' at the end of the try block");
+            return new Statement.TryCatch(body, errorVar, catchBody);
+        }
+
+        throw Error(Peek(), "Expected 'catch' in try block");
     }
 
     private Expression Expression() => Or();

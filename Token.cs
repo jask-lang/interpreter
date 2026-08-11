@@ -39,6 +39,11 @@ public enum TokenType
     EndStruct,
     Update,
 
+    // try-catch keywords
+    Try,
+    Catch,
+    EndTry,
+
     // symbols
     Plus,
     Minus,
