@@ -25,6 +25,7 @@ static class Repl
         TokenType.Update, TokenType.Return,
         TokenType.Break, TokenType.Continue,
         TokenType.And, TokenType.Or, TokenType.Not, TokenType.Is,
+        TokenType.Try, TokenType.Catch, TokenType.EndTry,
     };
 
     static string GetColorForType(TokenType type)
@@ -175,7 +176,8 @@ static class Repl
             { "endwhile", "while" },
             { "endstruct", "struct" },
             { "endfor", "for" },
-            { "endfunction", "function" }
+            { "endfunction", "function" },
+            { "endtry", "try" }
         };
 
         string[] allKeywords = blockPairs.Values.Concat(blockPairs.Keys).ToArray();
