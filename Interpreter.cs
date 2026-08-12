@@ -242,7 +242,17 @@ public partial class Interpreter
                 }
                 else if (collectionObj is string str)
                 {
-                    iterable = str.EnumerateRunes().Select(r => (object?)r.ToString());
+                    foreach (var rune in str.EnumerateRunes())
+                    {
+                        CurrentEnvironment[strItem] = rune.ToString();
+                        var res = ExecuteBlock(fi.Body);
+                        if (res.Type == StepResultType.Break) break;
+                        if (res.Type == StepResultType.Return)
+                        {
+                            if (!isItemValidOutOfScope) CurrentEnvironment.Remove(strItem);
+                            return res;
+                        }
+                    }
                 }
                 else
                 {
