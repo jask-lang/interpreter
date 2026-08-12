@@ -1,19 +1,22 @@
 namespace JaskLang;
 
-public class ReturnException : Exception
+public sealed class ReturnException : Exception
 {
     public object? Value { get; }
     public ReturnException(object? value) : base() { Value = value; }
+    public override string StackTrace => string.Empty;
 }
 
-public class BreakException : Exception
+public sealed class BreakException : Exception
 {
     public BreakException() : base() { }
+    public override string StackTrace => string.Empty;
 }
 
-public class ContinueException : Exception
+public sealed class ContinueException : Exception
 {
     public ContinueException() : base() { }
+    public override string StackTrace => string.Empty;
 }
 
 public class RestrictedValue : object
