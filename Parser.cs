@@ -45,6 +45,8 @@ public class Parser(List<Token> tokens, string? filePath = null)
         if (Match(TokenType.Global))
         {
             name = Consume(TokenType.Identifier, "Expected a variable name after 'set global'");
+            ValidateLowercase(name, "Variable");
+
             Consume(TokenType.Assign, "Expected '=' after variable name");
             Expression value = Expression();
 
@@ -52,6 +54,8 @@ public class Parser(List<Token> tokens, string? filePath = null)
         }
 
         name = Consume(TokenType.Identifier, "Expected a variable name after 'set'");
+        ValidateLowercase(name, "Variable");
+
         Consume(TokenType.Assign, "Expected '=' after variable name");
         Expression source = Expression();
 
@@ -78,6 +82,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
     {
         Token? name = null;
         name = Consume(TokenType.Identifier, "Expected a variable name after 'restrict'");
+        ValidateLowercase(name, "Variable");
 
         return new Statement.Restrict(name);
     }
@@ -143,6 +148,8 @@ public class Parser(List<Token> tokens, string? filePath = null)
     {
         // for <variable> in <collection>
         Token variable = Consume(TokenType.Identifier, "Expected a variable name after 'for'");
+        ValidateLowercase(variable, "Variable");
+
         Consume(TokenType.In, "Expected 'in' after variable name in for loop");
         Expression collection = Expression();
 
@@ -161,6 +168,8 @@ public class Parser(List<Token> tokens, string? filePath = null)
     {
         // function <name> ( <params> ) ... end
         Token name = Consume(TokenType.Identifier, "Expected a function name after 'function'");
+        ValidateLowercase(name, "Function");
+
         Consume(TokenType.LParen, "Expected '(' after function name");
 
         var parameters = new List<(Token Name, Token Type, Expression? Default)>();
@@ -169,6 +178,8 @@ public class Parser(List<Token> tokens, string? filePath = null)
             do
             {
                 Token paramName = Consume(TokenType.Identifier, "Expected parameter name");
+                ValidateLowercase(paramName, "Parameter");
+
                 Consume(TokenType.Colon, "Expected ':' after parameter name");
 
                 Token paramType = Consume(TokenType.Identifier, "Expected parameter type");
@@ -200,6 +211,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
     private Statement StructStatement()
     {
         Token name = Consume(TokenType.Identifier, "Expected a struct name after 'struct'");
+        ValidateUppercase(name, "Struct");
 
         var body = new List<Statement>();
         while (Check(TokenType.EndStruct) == false && IsAtEnd() == false)
@@ -217,6 +229,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
         Expression modulePath = Expression();
         Consume(TokenType.As, "Expected 'as' after module path in 'use' statement");
         Token alias = Consume(TokenType.Identifier, "Expected a module alias after 'as'");
+        ValidateLowercase(alias, "Module alias");
 
         return new Statement.Use(modulePath, alias);
     }
@@ -548,6 +561,22 @@ public class Parser(List<Token> tokens, string? filePath = null)
     }
 
     // Helper functions
+
+    private void ValidateLowercase(Token token, string entityType)
+    {
+        if (char.IsUpper(token.Lexeme[0]))
+        {
+            throw Error(token, $"{entityType} '{token.Lexeme}' must start with a lowercase letter");
+        }
+    }
+
+    private void ValidateUppercase(Token token, string entityType)
+    {
+        if (char.IsUpper(token.Lexeme[0]) == false)
+        {
+            throw Error(token, $"{entityType} '{token.Lexeme}' must start with an uppercase letter");
+        }
+    }
 
     private bool Match(params TokenType[] types)
     {

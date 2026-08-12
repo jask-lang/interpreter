@@ -99,11 +99,6 @@ public partial class Interpreter
             case Statement.Set s:
                 var variableName = s.Name.Lexeme;
 
-                if (char.IsUpper(variableName[0]))
-                {
-                    throw new LangException($"Variable '{variableName}' must start with a lowercase letter", s.Name.Line, _filePath);
-                }
-
                 if (CurrentEnvironment.TryGetValue(variableName, out var setVal) && setVal is RestrictedValue)
                 {
                     throw new LangException($"Variable '{variableName}' is restricted and cannot be modified", s.Name.Line, _filePath);
@@ -256,11 +251,6 @@ public partial class Interpreter
                     throw new LangException($"Function '{f.Name.Lexeme}' with the same parameter types is already defined", f.Name.Line, _filePath);
                 }
 
-                if (char.IsUpper(f.Name.Lexeme[0]))
-                {
-                    throw new LangException($"Function '{f.Name.Lexeme}' must start with a lowercase letter", f.Name.Line, _filePath);
-                }
-
                 _functions[functionKey] = (f.Params, f.Body);
 
                 if (_functionOverloads.TryGetValue(f.Name.Lexeme, out var overloads))
@@ -280,11 +270,6 @@ public partial class Interpreter
                 if (_structs.ContainsKey(structKey) || structKey == "Result" || structKey == "MapEntry" || structKey == "HttpResponse")
                 {
                     throw new LangException($"Struct '{s.Name.Lexeme}' is already defined", s.Name.Line, _filePath);
-                }
-
-                if (char.IsUpper(structKey[0]) == false)
-                {
-                    throw new LangException($"Struct definition for '{s.Name.Lexeme}' must start with an uppercase letter", s.Name.Line, _filePath);
                 }
 
                 _structs[s.Name.Lexeme] = s.Body;
@@ -338,11 +323,6 @@ public partial class Interpreter
                 if (isInternalModule == false && modulePath.EndsWith(".jask") == false)
                 {
                     modulePath += ".jask";
-                }
-
-                if (char.IsUpper(u.Alias.Lexeme[0]) == true)
-                {
-                    throw new LangException($"Module alias '{u.Alias.Lexeme}' must start with a lowercase letter", u.Alias.Line, _filePath);
                 }
 
                 if (_modules.ContainsKey(u.Alias.Lexeme))
