@@ -1,7 +1,5 @@
 namespace JaskLang;
 
-using System.Runtime.CompilerServices;
-
 public enum StepResultType
 {
     Next,
@@ -98,7 +96,6 @@ public partial class Interpreter
         ExecuteBlock(statements);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private StepResult ExecuteBlock(List<Statement> statements)
     {
         foreach (var statement in statements)
@@ -113,7 +110,6 @@ public partial class Interpreter
         return StepResult.Next;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private StepResult Execute(Statement statement)
     {
         switch (statement)
