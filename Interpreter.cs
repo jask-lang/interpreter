@@ -1,19 +1,29 @@
 namespace JaskLang;
 
-public class ReturnException : Exception
+public enum StepResultType
 {
+    Next,
+    Return,
+    Break,
+    Continue
+}
+
+public readonly struct StepResult
+{
+    public StepResultType Type { get; }
     public object? Value { get; }
-    public ReturnException(object? value) : base() { Value = value; }
-}
 
-public class BreakException : Exception
-{
-    public BreakException() : base() { }
-}
+    public static readonly StepResult Next = new(StepResultType.Next, null);
+    public static readonly StepResult Break = new(StepResultType.Break, null);
+    public static readonly StepResult Continue = new(StepResultType.Continue, null);
 
-public class ContinueException : Exception
-{
-    public ContinueException() : base() { }
+    public static StepResult Return(object? val) => new(StepResultType.Return, val);
+
+    private StepResult(StepResultType type, object? val)
+    {
+        Type = type;
+        Value = val;
+    }
 }
 
 public class RestrictedValue : object
@@ -83,13 +93,24 @@ public partial class Interpreter
 
     public void Interpret(List<Statement> statements)
     {
-        foreach (var statement in statements)
-        {
-            Execute(statement);
-        }
+        ExecuteBlock(statements);
     }
 
-    private void Execute(Statement statement)
+    private StepResult ExecuteBlock(IEnumerable<Statement> statements)
+    {
+        foreach (var statement in statements)
+        {
+            var result = Execute(statement);
+            if (result.Type != StepResultType.Next)
+            {
+                return result;
+            }
+        }
+
+        return StepResult.Next;
+    }
+
+    private StepResult Execute(Statement statement)
     {
         switch (statement)
         {
@@ -107,7 +128,7 @@ public partial class Interpreter
                 }
 
                 CurrentEnvironment[s.Name.Lexeme] = Evaluate(s.Value);
-                break;
+                return StepResult.Next;
 
             case Statement.SetGlobal sg:
                 var key = sg.Name.Lexeme;
@@ -123,7 +144,7 @@ public partial class Interpreter
                 }
 
                 _globalEnvironment[sg.Name.Lexeme] = Evaluate(sg.Value);
-                break;
+                return StepResult.Next;
             
             case Statement.Restrict r:
                 var restrictedVariableName = r.Name.Lexeme;
@@ -143,52 +164,43 @@ public partial class Interpreter
                 {
                     CurrentEnvironment[restrictedVariableName] = new RestrictedValue(var);
                 }
-                break;
+                return StepResult.Next;
 
             case Statement.If i:
                 if (IsTruthy(Evaluate(i.Condition)))
                 {
-                    foreach (var s in i.ThenBranch) Execute(s);
+                    return ExecuteBlock(i.ThenBranch);
                 }
                 else
                 {
-                    bool matched = false;
                     foreach (var e in i.ElsifBranches)
                     {
                         if (IsTruthy(Evaluate(e.Condition)))
                         {
-                            foreach (var s in e.Body) Execute(s);
-                            matched = true;
-                            break;
+                            return ExecuteBlock(e.Body);
                         }
                     }
-                    if (!matched && i.ElseBranch != null)
+                    if (i.ElseBranch != null)
                     {
-                        foreach (var s in i.ElseBranch) Execute(s);
+                        return ExecuteBlock(i.ElseBranch);
                     }
                 }
-                break;
+                return StepResult.Next;
 
             case Statement.Break:
-                throw new BreakException();
+                return StepResult.Break;
 
             case Statement.Continue:
-                throw new ContinueException();
+                return StepResult.Continue;
 
             case Statement.While w:
-                try
+                while (IsTruthy(Evaluate(w.Condition)))
                 {
-                    while (IsTruthy(Evaluate(w.Condition)))
-                    {
-                        try
-                        {
-                            foreach (var s in w.Body) Execute(s);
-                        }
-                        catch (ContinueException) { }
-                    }
+                    var res = ExecuteBlock(w.Body);
+                    if (res.Type == StepResultType.Break) break;
+                    if (res.Type == StepResultType.Return) return res;
                 }
-                catch (BreakException) { }
-                break;
+                return StepResult.Next;
 
             case Statement.ForIn fi:
                 object? collectionObj = Evaluate(fi.Collection);
@@ -224,26 +236,12 @@ public partial class Interpreter
                     throw new LangException($"'for...in' loop expects a list or a map, but got '{GetValueType(collectionObj)}'", fi.Variable.Line, _filePath);
                 }
 
-                try
-                {
-                    foreach (var item in iterable)
-                    {
-                        CurrentEnvironment[strItem] = item;
-                        try
-                        {
-                            foreach (var s in fi.Body) Execute(s);
-                        }
-                        catch (ContinueException) { }
-                    }
-                }
-                catch (BreakException) { }
-
                 if (isItemValidOutOfScope == false)
-                    {
-                        CurrentEnvironment.Remove(strItem);
-                    }
+                {
+                    CurrentEnvironment.Remove(strItem);
+                }
 
-                break;
+                return StepResult.Next;
 
             case Statement.Function f:
                 var functionKey = FunctionKey(f.Name.Lexeme, f.Params);
@@ -268,7 +266,7 @@ public partial class Interpreter
                 {
                     _functionOverloads[f.Name.Lexeme] = [(f.Params, f.Body)];
                 }
-                break;
+                return StepResult.Next;
 
             case Statement.Struct s:
                 var structKey = s.Name.Lexeme;
@@ -285,7 +283,7 @@ public partial class Interpreter
                 }
 
                 _structs[s.Name.Lexeme] = s.Body;
-                break;
+                return StepResult.Next;
 
             case Statement.StructUpdate su:
                 object? sourceObj = Evaluate(su.Source);
@@ -311,7 +309,7 @@ public partial class Interpreter
                 }
 
                 CurrentEnvironment[su.Target.Lexeme] = updated;
-                break;
+                return StepResult.Next;
 
             case Statement.Expression e:
                 object? result = Evaluate(e.Value);
@@ -319,7 +317,7 @@ public partial class Interpreter
                 {
                     Console.WriteLine(Stringify(result));
                 }
-                break;
+                return StepResult.Next;
 
             case Statement.Use u:
                 object? value = Evaluate(u.Value);
@@ -354,7 +352,7 @@ public partial class Interpreter
                     var moduleInterpreter = new Interpreter(_modulesLoading, _baseDirectory, _processDirectory, modulePath, _permissionManager);
                     moduleInterpreter.EnsureInternalFunctionGroupLoaded(modulePath);
                     _modules[u.Alias.Lexeme] = moduleInterpreter;
-                    break;
+                    return StepResult.Next;
                 }
 
                 // try embedded jcore modules first
@@ -386,7 +384,7 @@ public partial class Interpreter
                             _modulesLoading.Remove(virtualPath);
                         }
 
-                        break;
+                        return StepResult.Next;
                     }
                 }
 
@@ -429,16 +427,17 @@ public partial class Interpreter
                 {
                     _modulesLoading.Remove(fullPath);
                 }
-                break;
+                return StepResult.Next;
 
             case Statement.Return r:
                 object? returnValue = r.Value != null ? Evaluate(r.Value) : null;
-                throw new ReturnException(returnValue);
+                return StepResult.Return(returnValue);
 
             case Statement.TryCatch tc:
                 try
                 {
-                    foreach (var s in tc.Body) Execute(s);
+                    var res = ExecuteBlock(tc.Body);
+                    if (res.Type != StepResultType.Next) return res;
                 }
                 catch (LangException le)
                 {
@@ -454,9 +453,12 @@ public partial class Interpreter
                         CurrentEnvironment[tc.ErrorVar.Lexeme] = new StructInstance("Error", errorFields);
                     }
 
-                    foreach (var s in tc.CatchBody) Execute(s);
+                    var catchRes = ExecuteBlock(tc.CatchBody);
+                    if (catchRes.Type != StepResultType.Next) return catchRes;
                 }
-                break;
+                return StepResult.Next;
+                }
+                return StepResult.Next;
 
             default:
                 throw new LangException($"Unknown statement: {statement}", 0, _filePath);
