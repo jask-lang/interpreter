@@ -204,28 +204,41 @@ public partial class Interpreter
 
             case Statement.ForIn fi:
                 object? collectionObj = Evaluate(fi.Collection);
-                IEnumerable<object?> iterable;
-
                 string strItem = fi.Variable.Lexeme;
                 bool isItemValidOutOfScope = CurrentEnvironment.ContainsKey(strItem);
 
                 if (collectionObj is List<object?> list)
                 {
-                    iterable = list;
-                }
-                else if (collectionObj is Dictionary<object, object> map) 
-                {
-                    var mapList = new List<StructInstance>(map.Count);
-                    foreach (var ele in map)
+                    foreach (var item in list)
                     {
-                        mapList.Add(new StructInstance("MapEntry", new Dictionary<string, object?>
+                        CurrentEnvironment[strItem] = item;
+                        var res = ExecuteBlock(fi.Body);
+                        if (res.Type == StepResultType.Break) break;
+                        if (res.Type == StepResultType.Return)
+                        {
+                            if (!isItemValidOutOfScope) CurrentEnvironment.Remove(strItem);
+                            return res;
+                        }
+                    }
+                }
+                else if (collectionObj is System.Collections.IDictionary map) 
+                {
+                    foreach (System.Collections.DictionaryEntry ele in map)
+                    {
+                        CurrentEnvironment[strItem] = new StructInstance("MapEntry", new Dictionary<string, object?>
                         {
                             { "key", ele.Key },
                             { "value", ele.Value }
-                        }));
-                    }
+                        });
 
-                    iterable = mapList;
+                        var res = ExecuteBlock(fi.Body);
+                        if (res.Type == StepResultType.Break) break;
+                        if (res.Type == StepResultType.Return)
+                        {
+                            if (!isItemValidOutOfScope) CurrentEnvironment.Remove(strItem);
+                            return res;
+                        }
+                    }
                 }
                 else if (collectionObj is string str)
                 {
