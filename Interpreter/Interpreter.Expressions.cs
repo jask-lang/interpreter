@@ -207,11 +207,14 @@ public partial class Interpreter
         _scopes.Push(functionEnv);
         try
         {
-            var result = ExecuteBlock(body);
-            if (result.Type == StepResultType.Return)
+            foreach (var stmt in body)
             {
-                return result.Value;
+                Execute(stmt);
             }
+        }
+        catch (ReturnException ex)
+        {
+            return ex.Value;
         }
         finally
         {
@@ -329,13 +332,14 @@ public partial class Interpreter
         _scopes.Push(functionEnv);
         try
         {
-            var result = ExecuteBlock(match.Value.Body);
-
-            switch (result.Type)
+            foreach (var stmt in match.Value.Body)
             {
-                case StepResultType.Return:
-                    return result.Value;
+                Execute(stmt);
             }
+        }
+        catch (ReturnException ex)
+        {
+            return ex.Value;
         }
         finally
         {
