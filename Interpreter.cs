@@ -480,6 +480,8 @@ public partial class Interpreter
                     if (catchRes.Type != StepResultType.Next) return catchRes;
                 }
                 return StepResult.Next;
+                }
+                return StepResult.Next;
 
             default:
                 throw new LangException($"Unknown statement: {statement}", 0, _filePath);
