@@ -117,7 +117,7 @@ public partial class Interpreter
                     throw new LangException($"Global variable '{key}' is restricted and cannot be modified", sg.Name.Line, _filePath);
                 }
 
-                if (_globalEnvironment.ContainsKey(key) == false)
+                if (setGlobalVal == null)
                 {
                     throw new LangException($"Global variable '{key}' is not defined", sg.Name.Line, _filePath);
                 }
@@ -133,7 +133,7 @@ public partial class Interpreter
                     throw new LangException($"Variable '{restrictedVariableName}' is already restricted", r.Name.Line, _filePath);
                 }
 
-                if (CurrentEnvironment.ContainsKey(restrictedVariableName) == false)
+                if (restrictVal == null)
                 {
                     throw new LangException($"Variable '{restrictedVariableName}' is not defined", r.Name.Line, _filePath);
                 }
