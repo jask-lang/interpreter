@@ -36,8 +36,8 @@ public partial class Interpreter
     // direct lookup for user-defined overloads by function name, avoiding a full scan on every call
     private readonly Dictionary<string, List<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)>> _functionOverloads = [];
 
-    // dictionary for struct definitions: name -> body statements
-    private readonly Dictionary<string, List<Statement>> _structs = [];
+    // dictionary for struct definitions: name -> pre-evaluated default field values
+    private readonly Dictionary<string, Dictionary<string, object?>> _structs = [];
 
     // exported function names (by overload lookup key) - only these are callable from other modules
     private readonly HashSet<string> _exportedFunctionNames = [];
@@ -279,7 +279,27 @@ public partial class Interpreter
                     throw new LangException($"Struct '{s.Name.Lexeme}' is already defined", s.Name.Line, _filePath);
                 }
 
-                _structs[s.Name.Lexeme] = s.Body;
+                // evaluate the body once at definition time to cache default field values
+                var defaults = new Dictionary<string, object?>();
+                _scopes.Push(new Dictionary<string, object?>());
+                try
+                {
+                    foreach (var stmt in s.Body)
+                    {
+                        Execute(stmt);
+                    }
+
+                    foreach (var kv in _scopes.Peek())
+                    {
+                        defaults[kv.Key] = kv.Value;
+                    }
+                }
+                finally
+                {
+                    _scopes.Pop();
+                }
+
+                _structs[s.Name.Lexeme] = defaults;
 
                 if (s.IsExported)
                 {

@@ -139,35 +139,15 @@ public partial class Interpreter
             return internalFunc(call);
         }
 
-        // new struct with no overwritten fields: MyStruct()
-        if (_structs.TryGetValue(funcName, out var structBody))
+        // new struct with no overwritten fields: MyStruct() — clone cached defaults directly
+        if (_structs.TryGetValue(funcName, out var defaults))
         {
             if (call.Arguments.Count != 0)
             {
                 throw new LangException($"Struct '{funcName}' instantiation with positional arguments is not supported. Use named fields: {funcName}(field = value, ...)", funcExpr.Name.Line, _filePath);
             }
 
-            var fields = new Dictionary<string, object?>();
-
-            // run the struct body in a temporary scope, capturing set results as fields
-            _scopes.Push(new Dictionary<string, object?>());
-            try
-            {
-                foreach (var stmt in structBody)
-                {
-                    Execute(stmt);
-                }
-                // copy everything set in that scope into the fields dictionary
-                foreach (var kv in _scopes.Peek())
-                {
-                    fields[kv.Key] = kv.Value;
-                }
-            }
-            finally
-            {
-                _scopes.Pop();
-            }
-
+            var fields = new Dictionary<string, object?>(defaults);
             return new StructInstance(funcName, fields);
         }
 
@@ -540,31 +520,13 @@ public partial class Interpreter
     {
         string structName = call.Name.Lexeme;
 
-        if (!_structs.TryGetValue(structName, out var structBody))
+        if (!_structs.TryGetValue(structName, out var defaults))
         {
             throw new LangException($"Unknown struct '{structName}'", call.Name.Line, _filePath);
         }
 
-        // run the body to get default field values
-        var fields = new Dictionary<string, object?>();
-        _scopes.Push(new Dictionary<string, object?>());
-
-        try
-        {
-            foreach (var stmt in structBody)
-            {
-                Execute(stmt);
-            }
-
-            foreach (var kv in _scopes.Peek())
-            {
-                fields[kv.Key] = kv.Value;
-            }
-        }
-        finally
-        {
-            _scopes.Pop();
-        }
+        // clone cached defaults directly
+        var fields = new Dictionary<string, object?>(defaults);
 
         // apply named field initializers, validating each field name
         foreach (var (field, valueExpr) in call.FieldInits)
@@ -584,17 +546,27 @@ public partial class Interpreter
     {
         object? obj = Evaluate(m.Struct);
 
-        if (obj is not StructInstance instance)
+        if (obj is StructInstance instance)
         {
-            throw new LangException($"Attempted to access member '{m.Member.Lexeme}' on a non-struct value (got '{GetValueType(obj)}')", m.Member.Line, _filePath);
+            if (!instance.Fields.TryGetValue(m.Member.Lexeme, out var fieldValue))
+            {
+                throw new LangException($"Struct '{instance.TypeName}' has no member '{m.Member.Lexeme}'", m.Member.Line, _filePath);
+            }
+
+            return fieldValue;
         }
 
-        if (!instance.Fields.TryGetValue(m.Member.Lexeme, out var fieldValue))
+        if (obj is MapEntry entry)
         {
-            throw new LangException($"Struct '{instance.TypeName}' has no member '{m.Member.Lexeme}'", m.Member.Line, _filePath);
+            return m.Member.Lexeme switch
+            {
+                "key"   => entry.Key,
+                "value" => entry.Value,
+                _ => throw new LangException($"MapEntry has no member '{m.Member.Lexeme}'", m.Member.Line, _filePath)
+            };
         }
 
-        return fieldValue;
+        throw new LangException($"Attempted to access member '{m.Member.Lexeme}' on a non-struct value (got '{GetValueType(obj)}')", m.Member.Line, _filePath);
     }
 
     private object EvaluateUnary(Expression.Unary u)
