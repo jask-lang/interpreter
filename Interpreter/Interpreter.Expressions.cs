@@ -192,7 +192,7 @@ public partial class Interpreter
 
         var (parameters, body) = bestMatch.Value;
 
-        var functionEnv = new Dictionary<string, object?>();
+        var functionEnv = new Dictionary<string, object?>(StringComparer.Ordinal);
 
         // bind supplied arguments to leading parameters
         for (int i = 0; i < argValues.Count; i++)
@@ -622,11 +622,21 @@ public partial class Interpreter
 
     private object? LookupVariable(Token name)
     {
+        // Fast path: check current (top) scope first — hits for ~95% of lookups and
+        // avoids foreach-enumerator allocation / struct iteration overhead.
+        var currentScope = _scopes.Peek();
+        if (currentScope.TryGetValue(name.Lexeme, out var value))
+        {
+            if (value is RestrictedValue) return ((RestrictedValue)value).Value;
+            return value;
+        }
+
         foreach (var scope in _scopes)
         {
-            if (scope.TryGetValue(name.Lexeme, out var value)) {
-                if (value is RestrictedValue) return ((RestrictedValue)value).Value;
-                return value;
+            if (scope.TryGetValue(name.Lexeme, out var val))
+            {
+                if (val is RestrictedValue) return ((RestrictedValue)val).Value;
+                return val;
             }
         }
 
