@@ -53,6 +53,24 @@ public partial class Interpreter
                 call.ModuleAlias.Line, _filePath);
         }
 
+        string name = call.Name.Lexeme;
+        bool isUserDefinedFunction = module._functionOverloads.ContainsKey(name);
+        bool isUserDefinedStruct = module._structs.ContainsKey(name);
+
+        if (isUserDefinedFunction && !module._exportedFunctionNames.Contains(name))
+        {
+            throw new LangException(
+                $"Function '{name}' is not exported by module '{call.ModuleAlias.Lexeme}'",
+                call.Name.Line, _filePath);
+        }
+
+        if (isUserDefinedStruct && !module._exportedStructNames.Contains(name))
+        {
+            throw new LangException(
+                $"Struct '{name}' is not exported by module '{call.ModuleAlias.Lexeme}'",
+                call.Name.Line, _filePath);
+        }
+
         // arguments are expressions written in the callers scope, so evaluate them here first,
         // then hand the modules own interpreter already-evaluated values wrapped as literals
         var evaluatedArgs = new List<Expression>(call.Arguments.Count);
@@ -72,6 +90,24 @@ public partial class Interpreter
             throw new LangException(
                 $"Unknown module '{call.ModuleAlias.Lexeme}'. Did you forget a 'use ... as {call.ModuleAlias.Lexeme}' statement?",
                 call.ModuleAlias.Line, _filePath);
+        }
+
+        string name = call.Name.Lexeme;
+        bool isUserDefinedFunction = module._functionOverloads.ContainsKey(name);
+        bool isUserDefinedStruct = module._structs.ContainsKey(name);
+
+        if (isUserDefinedFunction && !module._exportedFunctionNames.Contains(name))
+        {
+            throw new LangException(
+                $"Function '{name}' is not exported by module '{call.ModuleAlias.Lexeme}'",
+                call.Name.Line, _filePath);
+        }
+
+        if (isUserDefinedStruct && !module._exportedStructNames.Contains(name))
+        {
+            throw new LangException(
+                $"Struct '{name}' is not exported by module '{call.ModuleAlias.Lexeme}'",
+                call.Name.Line, _filePath);
         }
 
         var evaluatedArgs = new List<(Token ParamName, Expression Value)>(call.Args.Count);

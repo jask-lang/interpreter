@@ -33,6 +33,7 @@ public enum TokenType
     Or,
     Not,
     Is,
+    Export,
 
     // struct keywords
     Struct,

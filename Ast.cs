@@ -55,7 +55,7 @@ public abstract record Statement
 
     public record Continue() : Statement;
 
-    public record Function(Token Name, List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body) : Statement;
+    public record Function(Token Name, bool IsExported, List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body) : Statement;
 
     public record Expression(JaskLang.Expression Value) : Statement;
 
@@ -63,7 +63,7 @@ public abstract record Statement
 
     public record Return(JaskLang.Expression? Value) : Statement;
 
-    public record Struct(Token Name, List<Statement> Body) : Statement;
+    public record Struct(Token Name, bool IsExported, List<Statement> Body) : Statement;
     
     public record TryCatch(List<Statement> Body, Token? ErrorVar, List<Statement> CatchBody) : Statement;
 }

@@ -42,6 +42,7 @@ public class Lexer
         ["try"]         = TokenType.Try,
         ["catch"]       = TokenType.Catch,
         ["endtry"]      = TokenType.EndTry,
+        ["export"]      = TokenType.Export,
     };
 
     public Lexer(string source, bool isInteractiveMode, string? filePath = null)

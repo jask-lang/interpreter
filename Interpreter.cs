@@ -39,6 +39,12 @@ public partial class Interpreter
     // dictionary for struct definitions: name -> body statements
     private readonly Dictionary<string, List<Statement>> _structs = [];
 
+    // exported function names (by overload lookup key) - only these are callable from other modules
+    private readonly HashSet<string> _exportedFunctionNames = [];
+
+    // exported struct names - only these are instantiable from other modules
+    private readonly HashSet<string> _exportedStructNames = [];
+
     // dictionary for imported modules: alias -> isolated interpreter instance running that module
     private readonly Dictionary<string, Interpreter> _modules = [];
 
@@ -57,7 +63,7 @@ public partial class Interpreter
     // stack for environments to manage scopes
     private readonly Stack<Dictionary<string, object?>> _scopes = new();
 
-    private Dictionary<string, object?> _globalEnvironment = [];
+    private readonly Dictionary<string, object?> _globalEnvironment = new(StringComparer.Ordinal);
 
     private Dictionary<string, object?> CurrentEnvironment => _scopes.Peek();
 
@@ -261,6 +267,11 @@ public partial class Interpreter
                 {
                     _functionOverloads[f.Name.Lexeme] = [(f.Params, f.Body)];
                 }
+
+                if (f.IsExported)
+                {
+                    _exportedFunctionNames.Add(f.Name.Lexeme);
+                }
                 break;
 
             case Statement.Struct s:
@@ -273,6 +284,11 @@ public partial class Interpreter
                 }
 
                 _structs[s.Name.Lexeme] = s.Body;
+
+                if (s.IsExported)
+                {
+                    _exportedStructNames.Add(s.Name.Lexeme);
+                }
                 break;
 
             case Statement.StructUpdate su:

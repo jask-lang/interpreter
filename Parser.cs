@@ -25,8 +25,15 @@ public class Parser(List<Token> tokens, string? filePath = null)
         if (Match(TokenType.If))       return IfStatement();
         if (Match(TokenType.While))    return WhileStatement();
         if (Match(TokenType.For))      return ForStatement();
-        if (Match(TokenType.Function)) return FunctionStatement();
-        if (Match(TokenType.Struct))   return StructStatement();
+        if (Match(TokenType.Function)) return FunctionStatement(false);
+        if (Match(TokenType.Struct))   return StructStatement(false);
+        if (Match(TokenType.Export))
+        {
+            if (Match(TokenType.Function)) return FunctionStatement(true);
+            if (Match(TokenType.Struct))   return StructStatement(true);
+
+            throw Error(Peek(), "Expected 'function' or 'struct' after 'export'");
+        }
         if (Match(TokenType.Use))      return UseStatement();
         if (Match(TokenType.Return))   return ReturnStatement();
         if (Match(TokenType.Break))    return new Statement.Break();
@@ -164,9 +171,8 @@ public class Parser(List<Token> tokens, string? filePath = null)
         return new Statement.ForIn(variable, collection, body);
     }
 
-    private Statement FunctionStatement()
+    private Statement FunctionStatement(bool isExported)
     {
-        // function <name> ( <params> ) ... end
         Token name = Consume(TokenType.Identifier, "Expected a function name after 'function'");
         ValidateLowercase(name, "Function");
 
@@ -205,10 +211,10 @@ public class Parser(List<Token> tokens, string? filePath = null)
 
         Consume(TokenType.EndFunction, "Expected 'endfunction' at the end of the function");
 
-        return new Statement.Function(name, parameters, body);
+        return new Statement.Function(name, isExported, parameters, body);
     }
 
-    private Statement StructStatement()
+    private Statement StructStatement(bool isExported)
     {
         Token name = Consume(TokenType.Identifier, "Expected a struct name after 'struct'");
         ValidateUppercase(name, "Struct");
@@ -221,7 +227,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
 
         Consume(TokenType.EndStruct, "Expected 'endstruct' at the end of the struct definition");
 
-        return new Statement.Struct(name, body);
+        return new Statement.Struct(name, isExported, body);
     }
 
     private Statement UseStatement()
