@@ -26,6 +26,7 @@ static class Repl
         TokenType.Break, TokenType.Continue,
         TokenType.And, TokenType.Or, TokenType.Not, TokenType.Is,
         TokenType.Try, TokenType.Catch, TokenType.EndTry,
+        TokenType.Export,
     };
 
     static string GetColorForType(TokenType type)
