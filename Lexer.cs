@@ -9,7 +9,7 @@ public class Lexer
     private int _current = 0;
     private int _line = 1;
 
-    private static readonly Dictionary<string, TokenType> Keywords = new()
+    private static readonly Dictionary<string, TokenType> Keywords = new(StringComparer.Ordinal)
     {
         ["set"]         = TokenType.Set,
         ["restrict"]    = TokenType.Restrict,

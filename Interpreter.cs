@@ -31,22 +31,22 @@ public class RestrictedValue : object
 public partial class Interpreter
 {
     // dictionary for functions: "name(type1,type2,...)" -> (parameters, body)
-    private readonly Dictionary<string, (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> _functions = [];
+    private readonly Dictionary<string, (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> _functions = new(StringComparer.Ordinal);
 
     // direct lookup for user-defined overloads by function name, avoiding a full scan on every call
-    private readonly Dictionary<string, List<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)>> _functionOverloads = [];
+    private readonly Dictionary<string, List<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)>> _functionOverloads = new(StringComparer.Ordinal);
 
     // dictionary for struct definitions: name -> pre-evaluated default field values
-    private readonly Dictionary<string, Dictionary<string, object?>> _structs = [];
+    private readonly Dictionary<string, Dictionary<string, object?>> _structs = new(StringComparer.Ordinal);
 
     // exported function names (by overload lookup key) - only these are callable from other modules
-    private readonly HashSet<string> _exportedFunctionNames = [];
+    private readonly HashSet<string> _exportedFunctionNames = new(StringComparer.Ordinal);
 
     // exported struct names - only these are instantiable from other modules
-    private readonly HashSet<string> _exportedStructNames = [];
+    private readonly HashSet<string> _exportedStructNames = new(StringComparer.Ordinal);
 
     // dictionary for imported modules: alias -> isolated interpreter instance running that module
-    private readonly Dictionary<string, Interpreter> _modules = [];
+    private readonly Dictionary<string, Interpreter> _modules = new(StringComparer.Ordinal);
 
     // tracks module file paths currently being loaded (by full path), to detect circular 'use' chains
     private readonly HashSet<string> _modulesLoading;

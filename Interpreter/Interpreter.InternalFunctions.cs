@@ -10,7 +10,7 @@ public partial class Interpreter
     };
 
     // dictionary for internal functions: name -> delegate
-    private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = [];
+    private readonly Dictionary<string, InternalFunctionDelegate> _internalFunctions = new(StringComparer.Ordinal);
 
     // dictionary for internal function named parameters: name -> list of (paramName, paramType) tuples
     private readonly Dictionary<string, List<(string Name, string Type)>> _internalFunctionParamNames = new(StringComparer.OrdinalIgnoreCase);

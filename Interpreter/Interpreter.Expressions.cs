@@ -298,7 +298,7 @@ public partial class Interpreter
             evaluatedArgs.Add((arg.ParamName, Evaluate(arg.Value)));
         }
 
-        var suppliedParamNames = new HashSet<string>(call.Args.Count);
+        var suppliedParamNames = new HashSet<string>(call.Args.Count, StringComparer.Ordinal);
         foreach (var arg in call.Args)
         {
             suppliedParamNames.Add(arg.ParamName.Lexeme);

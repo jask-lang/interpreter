@@ -16,7 +16,7 @@ public class StructInstance
     // returns a new StructInstance with one field replaced, leaving this instance unchanged
     public StructInstance WithField(string name, object? value)
     {
-        var newFields = new Dictionary<string, object?>(Fields) { [name] = value };
+        var newFields = new Dictionary<string, object?>(Fields, StringComparer.Ordinal) { [name] = value };
         return new StructInstance(TypeName, newFields);
     }
 
