@@ -12,7 +12,7 @@ public partial class Interpreter
     
     private static bool IsValueOfType(object? value, string typeName)
     {
-        return typeName.ToLower() switch
+        return typeName switch
         {
             "number"  => value is double,
             "string"  => value is string,
