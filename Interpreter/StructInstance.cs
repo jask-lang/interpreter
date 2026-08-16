@@ -36,3 +36,17 @@ public class StructInstance
         return fieldNames;
     }
 }
+
+public class MapEntry
+{
+    public object Key { get; }
+    public object Value { get; }
+
+    public MapEntry(object key, object value)
+    {
+        Key = key;
+        Value = value;
+    }
+
+    public override string ToString() => $"MapEntry {{ key: {Interpreter.Stringify(Key)}, value: {Interpreter.Stringify(Value)} }}";
+}

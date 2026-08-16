@@ -207,14 +207,10 @@ public partial class Interpreter
                 }
                 else if (collectionObj is Dictionary<object, object> map) 
                 {
-                    var mapList = new List<StructInstance>(map.Count);
+                    var mapList = new List<object?>(map.Count);
                     foreach (var ele in map)
                     {
-                        mapList.Add(new StructInstance("MapEntry", new Dictionary<string, object?>
-                        {
-                            { "key", ele.Key },
-                            { "value", ele.Value }
-                        }));
+                        mapList.Add(new MapEntry(ele.Key, ele.Value));
                     }
 
                     iterable = mapList;
