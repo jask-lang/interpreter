@@ -34,6 +34,7 @@ public partial class Interpreter
             List<object?> => "list",
             Dictionary<object, object> => "map",
             StructInstance si => si.TypeName,
+            MapEntry   me => "MapEntry",
             UntrustedValue uv => "untrusted",
             null => "nil",
             _ => value.GetType().Name
@@ -60,6 +61,11 @@ public partial class Interpreter
         if (a is StructInstance sa && b is StructInstance sb)
         {
             return AreStructInstancesEqual(sa, sb);
+        }
+
+        if (a is MapEntry maA && b is MapEntry maB)
+        {
+            return AreValuesEqual(maA.Key, maB.Key) && AreValuesEqual(maA.Value, maB.Value);
         }
 
         if (a is List<object?> la && b is List<object?> lb)
