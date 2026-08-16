@@ -60,12 +60,19 @@ public partial class Interpreter
     // current file path for error reporting
     private readonly string? _filePath;
 
-    // stack for environments to manage scopes
-    private readonly Stack<Dictionary<string, object?>> _scopes = new();
+    private readonly List<Dictionary<string, object?>> _scopes = new();
 
-    private readonly Dictionary<string, object?> _globalEnvironment = new(StringComparer.Ordinal);
+    // pool of reusable function-scope dictionaries to avoid per-call GC pressure
+    private readonly Stack<Dictionary<string, object?>> _functionScopePool;
 
-    private Dictionary<string, object?> CurrentEnvironment => _scopes.Peek();
+    // cached global environment reference; always at index 0
+    private Dictionary<string, object?> _globalEnvironment;
+
+    private Dictionary<string, object?> CurrentEnvironment => _scopes[_scopes.Count - 1];
+
+    // return value for the current function call
+    private object? _returnValue;
+    private bool _returning;
 
     private PermissionManager _permissionManager;
 
@@ -84,10 +91,27 @@ public partial class Interpreter
         _baseDirectory = baseDirectory;
         _processDirectory = processDirectory;
         _filePath = filePath;
-        _scopes.Push(_globalEnvironment);
+        _globalEnvironment = new Dictionary<string, object?>(StringComparer.Ordinal);
+        _scopes.Add(_globalEnvironment);
+        _functionScopePool = new();
         _permissionManager = permissionManager;
         _isInteractiveMode = isInteractiveMode;
         initInternalFunctions();
+    }
+
+    private Dictionary<string, object?> RentFunctionScope()
+    {
+        if (_functionScopePool.TryPop(out var dict))
+        {
+            return dict;
+        }
+        return new Dictionary<string, object?>(StringComparer.Ordinal);
+    }
+
+    private void ReturnFunctionScope(Dictionary<string, object?> dict)
+    {
+        dict.Clear();
+        _functionScopePool.Push(dict);
     }
 
     public void Interpret(List<Statement> statements)
@@ -116,43 +140,46 @@ public partial class Interpreter
             case Statement.SetGlobal sg:
                 var key = sg.Name.Lexeme;
 
-                if (_globalEnvironment.TryGetValue(key, out var setGlobalVal) && setGlobalVal is RestrictedValue)
-                {
-                    throw new LangException($"Global variable '{key}' is restricted and cannot be modified", sg.Name.Line, _filePath);
-                }
-
-                if (_globalEnvironment.ContainsKey(key) == false)
+                if (_globalEnvironment.TryGetValue(key, out var setGlobalVal) == false)
                 {
                     throw new LangException($"Global variable '{key}' is not defined", sg.Name.Line, _filePath);
                 }
 
-                _globalEnvironment[sg.Name.Lexeme] = Evaluate(sg.Value);
+                if (setGlobalVal is RestrictedValue)
+                {
+                    throw new LangException($"Global variable '{key}' is restricted and cannot be modified", sg.Name.Line, _filePath);
+                }
+
+                _globalEnvironment[key] = Evaluate(sg.Value);
                 break;
             
             case Statement.Restrict r:
                 var restrictedVariableName = r.Name.Lexeme;
 
-                if (CurrentEnvironment.TryGetValue(restrictedVariableName, out var restrictVal) && restrictVal is RestrictedValue)
-                {
-                    throw new LangException($"Variable '{restrictedVariableName}' is already restricted", r.Name.Line, _filePath);
-                }
-
-                if (CurrentEnvironment.ContainsKey(restrictedVariableName) == false)
+                if (CurrentEnvironment.TryGetValue(restrictedVariableName, out var restrictVal) == false)
                 {
                     throw new LangException($"Variable '{restrictedVariableName}' is not defined", r.Name.Line, _filePath);
                 }
 
-                object? var = CurrentEnvironment[restrictedVariableName];
-                if (var != null)
+                if (restrictVal is RestrictedValue)
                 {
-                    CurrentEnvironment[restrictedVariableName] = new RestrictedValue(var);
+                    throw new LangException($"Variable '{restrictedVariableName}' is already restricted", r.Name.Line, _filePath);
+                }
+
+                if (restrictVal != null)
+                {
+                    CurrentEnvironment[restrictedVariableName] = new RestrictedValue(restrictVal);
                 }
                 break;
 
             case Statement.If i:
                 if (IsTruthy(Evaluate(i.Condition)))
                 {
-                    foreach (var s in i.ThenBranch) Execute(s);
+                    foreach (var s in i.ThenBranch)
+                    {
+                        Execute(s);
+                        if (_returning) break;
+                    }
                 }
                 else
                 {
@@ -161,14 +188,22 @@ public partial class Interpreter
                     {
                         if (IsTruthy(Evaluate(e.Condition)))
                         {
-                            foreach (var s in e.Body) Execute(s);
+                            foreach (var s in e.Body)
+                            {
+                                Execute(s);
+                                if (_returning) break;
+                            }
                             matched = true;
                             break;
                         }
                     }
                     if (!matched && i.ElseBranch != null)
                     {
-                        foreach (var s in i.ElseBranch) Execute(s);
+                        foreach (var s in i.ElseBranch)
+                        {
+                            Execute(s);
+                            if (_returning) break;
+                        }
                     }
                 }
                 break;
@@ -182,11 +217,15 @@ public partial class Interpreter
             case Statement.While w:
                 try
                 {
-                    while (IsTruthy(Evaluate(w.Condition)))
+                    while (IsTruthy(Evaluate(w.Condition)) && !_returning)
                     {
                         try
                         {
-                            foreach (var s in w.Body) Execute(s);
+                            foreach (var s in w.Body)
+                            {
+                                Execute(s);
+                                if (_returning) break;
+                            }
                         }
                         catch (ContinueException) { }
                     }
@@ -229,9 +268,14 @@ public partial class Interpreter
                     foreach (var item in iterable)
                     {
                         CurrentEnvironment[strItem] = item;
+                        if (_returning) break;
                         try
                         {
-                            foreach (var s in fi.Body) Execute(s);
+                            foreach (var s in fi.Body)
+                            {
+                                Execute(s);
+                                if (_returning) break;
+                            }
                         }
                         catch (ContinueException) { }
                     }
@@ -280,8 +324,8 @@ public partial class Interpreter
                 }
 
                 // evaluate the body once at definition time to cache default field values
-                var defaults = new Dictionary<string, object?>();
-                _scopes.Push(new Dictionary<string, object?>());
+                var defaults = new Dictionary<string, object?>(StringComparer.Ordinal);
+                _scopes.Add(new Dictionary<string, object?>(StringComparer.Ordinal));
                 try
                 {
                     foreach (var stmt in s.Body)
@@ -289,14 +333,14 @@ public partial class Interpreter
                         Execute(stmt);
                     }
 
-                    foreach (var kv in _scopes.Peek())
+                    foreach (var kv in _scopes[_scopes.Count - 1])
                     {
                         defaults[kv.Key] = kv.Value;
                     }
                 }
                 finally
                 {
-                    _scopes.Pop();
+                    _scopes.RemoveAt(_scopes.Count - 1);
                 }
 
                 _structs[s.Name.Lexeme] = defaults;
@@ -447,8 +491,9 @@ public partial class Interpreter
                 break;
 
             case Statement.Return r:
-                object? returnValue = r.Value != null ? Evaluate(r.Value) : null;
-                throw new ReturnException(returnValue);
+                _returnValue = r.Value != null ? Evaluate(r.Value) : null;
+                _returning = true;
+                break;
 
             case Statement.TryCatch tc:
                 try

@@ -130,26 +130,30 @@ public partial class Interpreter
 
         string funcName = funcExpr.Name.Lexeme;
 
-        // check for user-defined overloads first (they take priority over internals)
-        bool hasUserOverload = _functionOverloads.ContainsKey(funcName);
+        // resolve all three possible targets — each dict hit at most once
+        _functionOverloads.TryGetValue(funcName, out var overloads);
+        _internalFunctions.TryGetValue(funcName, out var internalFunc);
+        bool hasStruct = _structs.TryGetValue(funcName, out var structDefaults);
 
-        // if no user overload exists, delegate to internal immediately (avoids double arg evaluation)
-        if (!hasUserOverload && _internalFunctions.TryGetValue(funcName, out var internalFunc))
+        // no user overload exists, delegate to internal
+        if (overloads == null && internalFunc != null)
         {
             return internalFunc(call);
         }
 
-        // new struct with no overwritten fields: MyStruct() — clone cached defaults directly
-        if (_structs.TryGetValue(funcName, out var defaults))
+        // new struct — clone cached defaults directly
+        if (hasStruct && call.Arguments.Count == 0)
         {
-            if (call.Arguments.Count != 0)
-            {
-                throw new LangException($"Struct '{funcName}' instantiation with positional arguments is not supported. Use named fields: {funcName}(field = value, ...)", funcExpr.Name.Line, _filePath);
-            }
-
-            var fields = new Dictionary<string, object?>(defaults);
+            var fields = new Dictionary<string, object?>(structDefaults!);
             return new StructInstance(funcName, fields);
         }
+        else if (hasStruct && call.Arguments.Count != 0)
+        {
+            throw new LangException($"Struct '{funcName}' instantiation with positional arguments is not supported. Use named fields: {funcName}(field = value, ...)", funcExpr.Name.Line, _filePath);
+        }
+
+        object? sv = _returnValue;
+        bool sr = _returning;
 
         // evaluate arguments first so we can match overloads by compatible types
         // if a parameter evaluates to nil, throw an error (jask does not allow passing nil to functions)
@@ -167,8 +171,14 @@ public partial class Interpreter
             }
         }
 
-        if (_functionOverloads.TryGetValue(funcName, out var overloads) == false || overloads.Count == 0)
+        if (overloads == null || overloads.Count == 0)
         {
+            // no user overload matched — fall back to internal if one exists
+            if (internalFunc != null)
+            {
+                return internalFunc(call);
+            }
+
             throw new LangException($"Unknown function '{funcName}'", funcExpr.Name.Line, _filePath);
         }
 
@@ -176,9 +186,9 @@ public partial class Interpreter
         if (bestMatch == null)
         {
             // no user overload matched — fall back to internal if one exists
-            if (_internalFunctions.TryGetValue(funcName, out var internalFunction))
+            if (internalFunc != null)
             {
-                return internalFunction(call);
+                return internalFunc(call);
             }
 
             bool anyArity = overloads.Any(o => o.Params.Count >= argValues.Count && o.Params.Count(p => p.Item3 == null) <= argValues.Count);
@@ -192,7 +202,7 @@ public partial class Interpreter
 
         var (parameters, body) = bestMatch.Value;
 
-        var functionEnv = new Dictionary<string, object?>(StringComparer.Ordinal);
+        var functionEnv = RentFunctionScope();
 
         // bind supplied arguments to leading parameters
         for (int i = 0; i < argValues.Count; i++)
@@ -210,47 +220,50 @@ public partial class Interpreter
             }
         }
 
-        // check that all required parameters were bound
+        // check that all required parameters were bound (before entering body)
         for (int i = 0; i < parameters.Count; i++)
         {
             if (!functionEnv.ContainsKey(parameters[i].Name.Lexeme) && parameters[i].Item3 == null)
             {
+                ReturnFunctionScope(functionEnv);
                 throw new LangException($"Missing required parameter '{parameters[i].Name.Lexeme}' when calling '{funcName}'", funcExpr.Name.Line, _filePath);
             }
         }
 
-        // call function body in the new environment
-        _scopes.Push(functionEnv);
-        try
+        // execute the function body with isolated return state
+        _scopes.Add(functionEnv);
+        _returnValue = null;
+        _returning = false;
+        foreach (var stmt in body)
         {
-            foreach (var stmt in body)
-            {
-                Execute(stmt);
-            }
+            Execute(stmt);
+            if (_returning) break;
         }
-        catch (ReturnException ex)
-        {
-            return ex.Value;
-        }
-        finally
-        {
-            _scopes.Pop();
-        }
+        var result = _returnValue;
+        _scopes.RemoveAt(_scopes.Count - 1);
+        ReturnFunctionScope(functionEnv);
 
-        // function returns nil
-        return null;
+        // restore callers return state (nested calls during this entire call can clobber it)
+        _returnValue = sv;
+        _returning = sr;
+        return result;
     }
 
     private object? EvaluateNamedCall(Expression.NamedCall call)
     {
         string name = call.Name.Lexeme;
 
-        // check if it's an internal function
-        if (_internalFunctions.TryGetValue(name, out var internalFunc))
+        // resolve all possible targets, each dict hit at most once
+        _internalFunctions.TryGetValue(name, out var internalFunc);
+        _structs.TryGetValue(name, out var structDefaults);
+        _functionOverloads.TryGetValue(name, out var overloads);
+
+        // dispatch to internal function (named args supported via param-name reordering)
+        if (internalFunc != null)
         {
             // get expected parameter names for this internal function
             var paramNames = GetInternalFunctionParameterNames(name);
-            
+
             // verify all supplied parameter names are valid
             var suppliedNames = call.Args.Select(a => a.ParamName.Lexeme).ToList();
             foreach (var suppliedName in suppliedNames)
@@ -260,13 +273,13 @@ public partial class Interpreter
                     throw new LangException($"Function '{name}' has no parameter named '{suppliedName}'", call.Name.Line, _filePath);
                 }
             }
-            
+
             // verify all required parameters are supplied
             if (suppliedNames.Count != paramNames.Count)
             {
                 throw new LangException($"Function '{name}' expects {paramNames.Count} argument(s), but got {suppliedNames.Count}", call.Name.Line, _filePath);
             }
-            
+
             // reorder arguments to match the expected parameter order
             var reorderedArgs = new List<Expression>();
             foreach (var paramName in paramNames)
@@ -274,21 +287,21 @@ public partial class Interpreter
                 var argIndex = call.Args.FindIndex(a => a.ParamName.Lexeme == paramName);
                 reorderedArgs.Add(call.Args[argIndex].Value);
             }
-            
+
             // create a regular Call expression with reordered arguments
             var regularCall = new Expression.Call(new Expression.Variable(call.Name), reorderedArgs);
             return internalFunc(regularCall);
         }
 
         // if it's a struct, delegate to struct instantiation
-        if (_structs.ContainsKey(name))
+        if (structDefaults != null)
         {
             var fieldInits = call.Args.Select(a => (a.ParamName, a.Value)).ToList();
             return EvaluateStructCall(new Expression.StructCall(call.Name, fieldInits));
         }
 
-        // find all overloads for this name
-        if (_functionOverloads.TryGetValue(name, out var overloads) == false || overloads.Count == 0)
+        // find best overload
+        if (overloads == null || overloads.Count == 0)
             throw new LangException($"Unknown function '{name}'", call.Name.Line, _filePath);
 
         // evaluate args up front so we can match on types too
@@ -311,7 +324,7 @@ public partial class Interpreter
         }
 
         // bind in parameter declaration order, filling defaults for omitted params
-        var functionEnv = new Dictionary<string, object?>();
+        var functionEnv = RentFunctionScope();
         foreach (var param in match.Value.Params)
         {
             var found = false;
@@ -341,28 +354,29 @@ public partial class Interpreter
         {
             if (!functionEnv.ContainsKey(param.Name.Lexeme) && param.Item3 == null)
             {
+                ReturnFunctionScope(functionEnv);
                 throw new LangException($"Missing required parameter '{param.Name.Lexeme}' when calling '{name}'", call.Name.Line, _filePath);
             }
         }
 
-        _scopes.Push(functionEnv);
-        try
-        {
-            foreach (var stmt in match.Value.Body)
-            {
-                Execute(stmt);
-            }
-        }
-        catch (ReturnException ex)
-        {
-            return ex.Value;
-        }
-        finally
-        {
-            _scopes.Pop();
-        }
+        object? savedReturnValue2 = _returnValue;
+        bool savedReturning2 = _returning;
 
-        return null;
+        _scopes.Add(functionEnv);
+        _returnValue = null;
+        _returning = false;
+        foreach (var stmt in match.Value.Body)
+        {
+            Execute(stmt);
+            if (_returning) break;
+        }
+        var namedResult = _returnValue;
+        _scopes.RemoveAt(_scopes.Count - 1);
+        ReturnFunctionScope(functionEnv);
+
+        _returnValue = savedReturnValue2;
+        _returning = savedReturning2;
+        return namedResult;
     }
 
     private (List<(Token Name, Token Type, Expression? Default)> Params, List<Statement> Body)? SelectBestOverload(
@@ -622,21 +636,15 @@ public partial class Interpreter
 
     private object? LookupVariable(Token name)
     {
-        // Fast path: check current (top) scope first — hits for ~95% of lookups and
-        // avoids foreach-enumerator allocation / struct iteration overhead.
-        var currentScope = _scopes.Peek();
-        if (currentScope.TryGetValue(name.Lexeme, out var value))
-        {
-            if (value is RestrictedValue) return ((RestrictedValue)value).Value;
-            return value;
-        }
+        string lexeme = name.Lexeme;
 
-        foreach (var scope in _scopes)
+        // iterate top-to-bottom using index access
+        for (int i = _scopes.Count - 1; i >= 0; i--)
         {
-            if (scope.TryGetValue(name.Lexeme, out var val))
+            if (_scopes[i].TryGetValue(lexeme, out var value))
             {
-                if (val is RestrictedValue) return ((RestrictedValue)val).Value;
-                return val;
+                if (value is RestrictedValue) return ((RestrictedValue)value).Value;
+                return value;
             }
         }
 
