@@ -178,8 +178,7 @@ static class Repl
             { "endstruct", "struct" },
             { "endfor", "for" },
             { "endfunction", "function" },
-            { "endtry", "try" },
-            { "}", "{"}
+            { "endtry", "try" }
         };
 
         string[] allKeywords = blockPairs.Values.Concat(blockPairs.Keys).ToArray();
