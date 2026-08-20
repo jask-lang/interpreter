@@ -221,7 +221,7 @@ public partial class Interpreter
         }
         else if (arg is string s)
         {
-            if (double.TryParse(s, out double parsed))
+            if (double.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, out double parsed))
             {
                 return parsed;
             }
