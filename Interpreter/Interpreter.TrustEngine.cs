@@ -109,7 +109,7 @@ public partial class Interpreter
             JsonValueKind.Object => ConvertJsonObject(element),
             JsonValueKind.Array => ConvertJsonArray(element),
             JsonValueKind.String => element.GetString()!,
-            JsonValueKind.Number when element.TryGetInt64(out long intValue) => intValue,
+            JsonValueKind.Number when element.TryGetInt64(out long intValue) => (double)intValue,
             JsonValueKind.Number => element.GetDouble(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
