@@ -5,6 +5,7 @@ public class Parser(List<Token> tokens, string? filePath = null)
     private readonly List<Token> _tokens = tokens;
     private readonly string? _filePath = filePath;
     private int _current = 0;
+    private int _functionDepth = 0;
 
     public List<Statement> Parse()
     {
@@ -35,7 +36,15 @@ public class Parser(List<Token> tokens, string? filePath = null)
             throw Error(Peek(), "Expected 'function' or 'struct' after 'export'");
         }
         if (Match(TokenType.Use))      return UseStatement();
-        if (Match(TokenType.Return))   return ReturnStatement();
+        if (Match(TokenType.Return))
+        {
+            if (_functionDepth == 0)
+            {
+                throw Error(Previous(), "'return' is only allowed inside a function");
+            }
+
+            return ReturnStatement();
+        }
         if (Match(TokenType.Break))    return new Statement.Break();
         if (Match(TokenType.Continue)) return new Statement.Continue();
         if (Match(TokenType.Try))      return TryStatement();
@@ -204,9 +213,17 @@ public class Parser(List<Token> tokens, string? filePath = null)
         Consume(TokenType.RParen, "Expected ')' after parameters");
 
         var body = new List<Statement>();
-        while (Check(TokenType.EndFunction) == false && IsAtEnd() == false)
+        _functionDepth++;
+        try
         {
-            body.Add(Statement());
+            while (Check(TokenType.EndFunction) == false && IsAtEnd() == false)
+            {
+                body.Add(Statement());
+            }
+        }
+        finally
+        {
+            _functionDepth--;
         }
 
         Consume(TokenType.EndFunction, "Expected 'endfunction' at the end of the function");
