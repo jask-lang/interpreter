@@ -498,7 +498,11 @@ public partial class Interpreter
             case Statement.TryCatch tc:
                 try
                 {
-                    foreach (var s in tc.Body) Execute(s);
+                    foreach (var s in tc.Body)
+                    {
+                        Execute(s);
+                        if (_returning) break;
+                    }
                 }
                 catch (LangException le)
                 {
@@ -514,7 +518,11 @@ public partial class Interpreter
                         CurrentEnvironment[tc.ErrorVar.Lexeme] = new StructInstance("Error", errorFields);
                     }
 
-                    foreach (var s in tc.CatchBody) Execute(s);
+                    foreach (var s in tc.CatchBody)
+                    {
+                        Execute(s);
+                        if (_returning) break;
+                    }
                 }
                 break;
 
