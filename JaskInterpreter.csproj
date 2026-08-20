@@ -20,10 +20,16 @@
   </Target>
 
   <Target Name="SetGitCommitHash" BeforeTargets="BeforeCompile">
-    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low">
+    <PropertyGroup>
+      <GitHashCommand Condition="$([MSBuild]::IsOSPlatform('Windows'))">where git &gt;nul 2&gt;&amp;1 &amp;&amp; git rev-parse --short HEAD 2&gt;nul &amp; exit /b 0</GitHashCommand>
+      <GitHashCommand Condition="!$([MSBuild]::IsOSPlatform('Windows'))">command -v git &gt;/dev/null 2&gt;&amp;1 &amp;&amp; git rev-parse --short HEAD 2&gt;/dev/null; exit 0</GitHashCommand>
+    </PropertyGroup>
+
+    <Exec Command="$(GitHashCommand)" ConsoleToMSBuild="true" StandardOutputImportance="low" ContinueOnError="true" Condition="'$(GitCommitHash)' == ''">
       <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitHash" />
     </Exec>
-    <ItemGroup>
+
+    <ItemGroup Condition="'$(GitCommitHash)' != ''">
       <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
         <_Parameter1>GitCommitHash</_Parameter1>
         <_Parameter2>$(GitCommitHash)</_Parameter2>
