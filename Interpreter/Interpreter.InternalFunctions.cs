@@ -314,14 +314,19 @@ public partial class Interpreter
         }
 
         int index = (int)indexDouble;
-        var runes = str.EnumerateRunes().ToList();
 
-        if (index < 0 || index >= runes.Count)
+        int count = 0;
+        foreach (var rune in str.EnumerateRunes())
         {
-            throw new LangException($"Function 'charAt' index {index} is out of bounds for string of length {runes.Count}", GetCallToken(call).Line, _filePath);
+            if (count == index)
+            {
+                return rune.ToString();
+            }
+
+            count++;
         }
 
-        return runes[index].ToString();
+        throw new LangException($"Function 'charAt' index {index} is out of bounds for string of length {count}", GetCallToken(call).Line, _filePath);
     }
 
     private object? CallInternalFunctionClock(Expression.Call call)
