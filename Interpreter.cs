@@ -34,7 +34,11 @@ public partial class Interpreter
     private readonly Dictionary<string, (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> _functions = new(StringComparer.Ordinal);
 
     // direct lookup for user-defined overloads by function name, avoiding a full scan on every call
-    private readonly Dictionary<string, List<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)>> _functionOverloads = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<UserFunctionInfo>> _functionOverloads = new(StringComparer.Ordinal);
+
+    // bumped whenever a new function, struct or internal function group is defined;
+    // used to invalidate the per-call-site resolutions cached on the AST nodes
+    private int _resolutionGeneration;
 
     // dictionary for struct definitions: name -> pre-evaluated default field values
     private readonly Dictionary<string, Dictionary<string, object?>> _structs = new(StringComparer.Ordinal);
@@ -299,19 +303,23 @@ public partial class Interpreter
 
                 _functions[functionKey] = (f.Params, f.Body);
 
+                // precompute the overload metadata once at definition time
+                var functionInfo = new UserFunctionInfo(f.Params, f.Body);
                 if (_functionOverloads.TryGetValue(f.Name.Lexeme, out var overloads))
                 {
-                    overloads.Add((f.Params, f.Body));
+                    overloads.Add(functionInfo);
                 }
                 else
                 {
-                    _functionOverloads[f.Name.Lexeme] = [(f.Params, f.Body)];
+                    _functionOverloads[f.Name.Lexeme] = [functionInfo];
                 }
 
                 if (f.IsExported)
                 {
                     _exportedFunctionNames.Add(f.Name.Lexeme);
                 }
+
+                _resolutionGeneration++;
                 break;
 
             case Statement.Struct s:
@@ -349,6 +357,8 @@ public partial class Interpreter
                 {
                     _exportedStructNames.Add(s.Name.Lexeme);
                 }
+
+                _resolutionGeneration++;
                 break;
 
             case Statement.StructUpdate su:

@@ -236,17 +236,6 @@ public partial class Interpreter
         }
     }
 
-    private List<string> GetInternalFunctionParameterNames(string funcName)
-    {
-        if (_internalFunctionParamNames.TryGetValue(funcName, out var paramNames))
-        {
-            // return just the names
-            return paramNames.Select(p => p.Name).ToList();
-        }
-
-        throw new LangException($"Function '{funcName}' does not support named parameters", new Token(TokenType.Identifier, funcName, null, 0).Line, _filePath);
-    }
-
     private StructInstance createStructInstanceFromResult(ResultType result, object? value, string? error = null)
     {
         var fields = new Dictionary<string, object?>

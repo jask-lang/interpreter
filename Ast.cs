@@ -13,9 +13,27 @@ public abstract record Expression
 
     public record Grouping(Expression Inner) : Expression;
  
-    public record Call(Expression Callee, List<Expression> Arguments) : Expression;
- 
-    public record NamedCall(Token Name, List<(Token ParamName, JaskLang.Expression Value)> Args) : Expression;
+    public record Call(Expression Callee, List<Expression> Arguments) : Expression
+    {
+        // caches the call-site resolution so that repeated invocations (e.g. inside
+        // loops) skip dictionary lookups and overload selection; invalidated through
+        // the interpreter's _resolutionGeneration
+        internal int CallResolutionGeneration = -1;
+        internal CallResolution? CallResolution;
+    }
+
+    public record NamedCall(Token Name, List<(Token ParamName, JaskLang.Expression Value)> Args) : Expression
+    {
+        internal int CallResolutionGeneration = -1;
+        internal CallResolution? CallResolution;
+
+        // cached parameter reordering for named calls of internal functions
+        // (maps the expected parameter order to the index in Args)
+        internal int[]? ArgOrder;
+
+        // cached set of the supplied parameter names (Args are immutable)
+        internal HashSet<string>? SuppliedParamNames;
+    }
  
     public record ModuleCall(Token ModuleAlias, Token Name, List<Expression> Arguments) : Expression;
  

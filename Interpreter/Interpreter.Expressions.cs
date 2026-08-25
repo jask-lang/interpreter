@@ -130,34 +130,40 @@ public partial class Interpreter
 
         string funcName = funcExpr.Name.Lexeme;
 
-        // resolve all three possible targets — each dict hit at most once
-        _functionOverloads.TryGetValue(funcName, out var overloads);
-        _internalFunctions.TryGetValue(funcName, out var internalFunc);
-        bool hasStruct = _structs.TryGetValue(funcName, out var structDefaults);
+        // resolve the call site against the current function table and cache the
+        // result on the AST node, so repeated invocations (e.g. inside loops) skip
+        // the dictionary lookups and overload selection entirely
+        CallResolution? resolution = call.CallResolution;
+        int generation = _resolutionGeneration;
+
+        if (resolution is null || call.CallResolutionGeneration != generation)
+        {
+            resolution = ResolveCall(funcName);
+            call.CallResolution = resolution;
+            call.CallResolutionGeneration = generation;
+        }
 
         // no user overload exists, delegate to internal
-        if (overloads == null && internalFunc != null)
+        if (resolution.IsInternalOnly)
         {
-            return internalFunc(call);
+            return resolution.Internal!(call);
         }
 
         // new struct — clone cached defaults directly
-        if (hasStruct && call.Arguments.Count == 0)
+        if (resolution.HasStruct)
         {
-            var fields = new Dictionary<string, object?>(structDefaults!);
-            return new StructInstance(funcName, fields);
-        }
-        else if (hasStruct && call.Arguments.Count != 0)
-        {
+            if (call.Arguments.Count == 0)
+            {
+                var fields = new Dictionary<string, object?>(resolution.StructDefaults!);
+                return new StructInstance(funcName, fields);
+            }
+
             throw new LangException($"Struct '{funcName}' instantiation with positional arguments is not supported. Use named fields: {funcName}(field = value, ...)", funcExpr.Name.Line, _filePath);
         }
 
-        object? sv = _returnValue;
-        bool sr = _returning;
-
         // evaluate arguments first so we can match overloads by compatible types
         // if a parameter evaluates to nil, throw an error (jask does not allow passing nil to functions)
-        var argValues = new List<object?>();
+        var argValues = new List<object?>(call.Arguments.Count);
         foreach (var arg in call.Arguments)
         {
             var value = Evaluate(arg);
@@ -171,38 +177,85 @@ public partial class Interpreter
             }
         }
 
-        if (overloads == null || overloads.Count == 0)
+        if (resolution.HasUserOverloads == false)
         {
             // no user overload matched — fall back to internal if one exists
-            if (internalFunc != null)
+            if (resolution.Internal != null)
             {
-                return internalFunc(call);
+                return resolution.Internal(call);
             }
 
             throw new LangException($"Unknown function '{funcName}'", funcExpr.Name.Line, _filePath);
         }
 
-        var bestMatch = SelectBestOverload(overloads, argValues);
-        if (bestMatch == null)
+        var bestMatch = resolution.Single != null
+            ? MatchSingleOverload(resolution.Single, argValues)
+            : SelectBestOverload(resolution.Candidates!, argValues);
+
+        if (bestMatch != null)
         {
-            // no user overload matched — fall back to internal if one exists
-            if (internalFunc != null)
-            {
-                return internalFunc(call);
-            }
-
-            bool anyArity = overloads.Any(o => o.Params.Count >= argValues.Count && o.Params.Count(p => p.Item3 == null) <= argValues.Count);
-            if (anyArity)
-            {
-                throw new LangException($"Function '{funcName}' has no overload matching types ({string.Join(", ", argValues.Select(GetValueType))})", funcExpr.Name.Line, _filePath);
-            }
-
-            throw new LangException($"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name.Line, _filePath);
+            return InvokeUserFunction(bestMatch, argValues, funcName, funcExpr.Name);
         }
 
-        var (parameters, body) = bestMatch.Value;
+        // no user overload matched — fall back to internal if one exists
+        if (resolution.Internal != null)
+        {
+            return resolution.Internal(call);
+        }
 
+        bool anyArity = false;
+        foreach (var overload in resolution.Candidates!)
+        {
+            if (overload.ParamCount >= argValues.Count && overload.RequiredCount <= argValues.Count)
+            {
+                anyArity = true;
+                break;
+            }
+        }
+
+        if (anyArity)
+        {
+            throw new LangException($"Function '{funcName}' has no overload matching types ({string.Join(", ", argValues.Select(GetValueType))})", funcExpr.Name.Line, _filePath);
+        }
+
+        throw new LangException($"Function '{funcName}' has no overload that takes {argValues.Count} argument(s)", funcExpr.Name.Line, _filePath);
+    }
+
+    // fast path for call sites whose name resolves to exactly one user overload
+    private UserFunctionInfo? MatchSingleOverload(UserFunctionInfo overload, IReadOnlyList<object?> argValues)
+    {
+        if (argValues.Count > overload.ParamCount)
+        {
+            return null;
+        }
+
+        int required = 0;
+        for (int i = 0; i < argValues.Count; i++)
+        {
+            if (overload.IsDefault[i] == false)
+            {
+                required++;
+            }
+
+            if (overload.IsAny[i] == false && IsValueOfType(argValues[i], overload.TypeNames[i]) == false)
+            {
+                return null;
+            }
+        }
+
+        if (argValues.Count < required)
+        {
+            return null;
+        }
+
+        return overload;
+    }
+
+    // binds arguments to the matched function and executes its body
+    private object? InvokeUserFunction(UserFunctionInfo function, List<object?> argValues, string funcName, Token nameToken)
+    {
         var functionEnv = RentFunctionScope();
+        var parameters = function.Params;
 
         // bind supplied arguments to leading parameters
         for (int i = 0; i < argValues.Count; i++)
@@ -213,9 +266,8 @@ public partial class Interpreter
         // bind defaults for remaining parameters
         for (int i = argValues.Count; i < parameters.Count; i++)
         {
-            if (parameters[i].Item3 != null)
+            if (function.IsDefault[i])
             {
-                // Item3 cannot be null here so we can use null-forgiving
                 functionEnv[parameters[i].Name.Lexeme] = Evaluate(parameters[i].Item3!);
             }
         }
@@ -223,18 +275,26 @@ public partial class Interpreter
         // check that all required parameters were bound (before entering body)
         for (int i = 0; i < parameters.Count; i++)
         {
-            if (!functionEnv.ContainsKey(parameters[i].Name.Lexeme) && parameters[i].Item3 == null)
+            if (function.IsDefault[i] == false && functionEnv.ContainsKey(parameters[i].Name.Lexeme) == false)
             {
                 ReturnFunctionScope(functionEnv);
-                throw new LangException($"Missing required parameter '{parameters[i].Name.Lexeme}' when calling '{funcName}'", funcExpr.Name.Line, _filePath);
+                throw new LangException($"Missing required parameter '{parameters[i].Name.Lexeme}' when calling '{funcName}'", nameToken.Line, _filePath);
             }
         }
 
+        return ExecuteFunctionBody(function, functionEnv);
+    }
+
+    private object? ExecuteFunctionBody(UserFunctionInfo function, Dictionary<string, object?> functionEnv)
+    {
         // execute the function body with isolated return state
+        object? savedReturnValue = _returnValue;
+        bool savedReturning = _returning;
+
         _scopes.Add(functionEnv);
         _returnValue = null;
         _returning = false;
-        foreach (var stmt in body)
+        foreach (var stmt in function.Body)
         {
             Execute(stmt);
             if (_returning) break;
@@ -244,8 +304,8 @@ public partial class Interpreter
         ReturnFunctionScope(functionEnv);
 
         // restore callers return state (nested calls during this entire call can clobber it)
-        _returnValue = sv;
-        _returning = sr;
+        _returnValue = savedReturnValue;
+        _returning = savedReturning;
         return result;
     }
 
@@ -253,56 +313,35 @@ public partial class Interpreter
     {
         string name = call.Name.Lexeme;
 
-        // resolve all possible targets, each dict hit at most once
-        _internalFunctions.TryGetValue(name, out var internalFunc);
-        _structs.TryGetValue(name, out var structDefaults);
-        _functionOverloads.TryGetValue(name, out var overloads);
+        // resolve the call site (same caching as EvaluateCall)
+        CallResolution? resolution = call.CallResolution;
+        int generation = _resolutionGeneration;
+
+        if (resolution is null || call.CallResolutionGeneration != generation)
+        {
+            resolution = ResolveCall(name);
+            call.CallResolution = resolution;
+            call.CallResolutionGeneration = generation;
+        }
 
         // dispatch to internal function (named args supported via param-name reordering)
-        if (internalFunc != null)
+        if (resolution.Internal != null)
         {
-            // get expected parameter names for this internal function
-            var paramNames = GetInternalFunctionParameterNames(name);
-
-            // verify all supplied parameter names are valid
-            var suppliedNames = call.Args.Select(a => a.ParamName.Lexeme).ToList();
-            foreach (var suppliedName in suppliedNames)
-            {
-                if (!paramNames.Contains(suppliedName))
-                {
-                    throw new LangException($"Function '{name}' has no parameter named '{suppliedName}'", call.Name.Line, _filePath);
-                }
-            }
-
-            // verify all required parameters are supplied
-            if (suppliedNames.Count != paramNames.Count)
-            {
-                throw new LangException($"Function '{name}' expects {paramNames.Count} argument(s), but got {suppliedNames.Count}", call.Name.Line, _filePath);
-            }
-
-            // reorder arguments to match the expected parameter order
-            var reorderedArgs = new List<Expression>();
-            foreach (var paramName in paramNames)
-            {
-                var argIndex = call.Args.FindIndex(a => a.ParamName.Lexeme == paramName);
-                reorderedArgs.Add(call.Args[argIndex].Value);
-            }
-
-            // create a regular Call expression with reordered arguments
-            var regularCall = new Expression.Call(new Expression.Variable(call.Name), reorderedArgs);
-            return internalFunc(regularCall);
+            return InvokeInternalNamedFunction(resolution.Internal, name, call);
         }
 
         // if it's a struct, delegate to struct instantiation
-        if (structDefaults != null)
+        if (resolution.HasStruct)
         {
             var fieldInits = call.Args.Select(a => (a.ParamName, a.Value)).ToList();
             return EvaluateStructCall(new Expression.StructCall(call.Name, fieldInits));
         }
 
         // find best overload
-        if (overloads == null || overloads.Count == 0)
+        if (resolution.HasUserOverloads == false)
+        {
             throw new LangException($"Unknown function '{name}'", call.Name.Line, _filePath);
+        }
 
         // evaluate args up front so we can match on types too
         var evaluatedArgs = new List<(Token ParamName, object? Value)>(call.Args.Count);
@@ -311,13 +350,13 @@ public partial class Interpreter
             evaluatedArgs.Add((arg.ParamName, Evaluate(arg.Value)));
         }
 
-        var suppliedParamNames = new HashSet<string>(call.Args.Count, StringComparer.Ordinal);
+        var suppliedParamNames = call.SuppliedParamNames ??= new HashSet<string>(call.Args.Count, StringComparer.Ordinal);
         foreach (var arg in call.Args)
         {
             suppliedParamNames.Add(arg.ParamName.Lexeme);
         }
 
-        var match = SelectBestNamedOverload(overloads, evaluatedArgs, suppliedParamNames);
+        var match = SelectBestNamedOverload(resolution.Candidates!, evaluatedArgs, suppliedParamNames);
         if (match == null)
         {
             throw new LangException($"Function '{name}' has no overload matching named parameters ({string.Join(", ", suppliedParamNames)})", call.Name.Line, _filePath);
@@ -325,8 +364,10 @@ public partial class Interpreter
 
         // bind in parameter declaration order, filling defaults for omitted params
         var functionEnv = RentFunctionScope();
-        foreach (var param in match.Value.Params)
+        var matchedParams = match.Params;
+        for (int i = 0; i < matchedParams.Count; i++)
         {
+            var param = matchedParams[i];
             var found = false;
             object? suppliedValue = null;
             foreach (var supplied in evaluatedArgs)
@@ -343,187 +384,189 @@ public partial class Interpreter
             {
                 functionEnv[param.Name.Lexeme] = suppliedValue;
             }
-            else if (param.Item3 != null)
+            else if (match.IsDefault[i])
             {
-                functionEnv[param.Name.Lexeme] = Evaluate(param.Item3);
+                functionEnv[param.Name.Lexeme] = Evaluate(param.Item3!);
             }
         }
 
         // check that all required parameters were bound
-        foreach (var param in match.Value.Params)
+        for (int i = 0; i < matchedParams.Count; i++)
         {
-            if (!functionEnv.ContainsKey(param.Name.Lexeme) && param.Item3 == null)
+            if (match.IsDefault[i] == false && functionEnv.ContainsKey(matchedParams[i].Name.Lexeme) == false)
             {
                 ReturnFunctionScope(functionEnv);
-                throw new LangException($"Missing required parameter '{param.Name.Lexeme}' when calling '{name}'", call.Name.Line, _filePath);
+                throw new LangException($"Missing required parameter '{matchedParams[i].Name.Lexeme}' when calling '{name}'", call.Name.Line, _filePath);
             }
         }
 
-        object? savedReturnValue2 = _returnValue;
-        bool savedReturning2 = _returning;
-
-        _scopes.Add(functionEnv);
-        _returnValue = null;
-        _returning = false;
-        foreach (var stmt in match.Value.Body)
-        {
-            Execute(stmt);
-            if (_returning) break;
-        }
-        var namedResult = _returnValue;
-        _scopes.RemoveAt(_scopes.Count - 1);
-        ReturnFunctionScope(functionEnv);
-
-        _returnValue = savedReturnValue2;
-        _returning = savedReturning2;
-        return namedResult;
+        return ExecuteFunctionBody(match, functionEnv);
     }
 
-    private (List<(Token Name, Token Type, Expression? Default)> Params, List<Statement> Body)? SelectBestOverload(
-        IReadOnlyList<(List<(Token Name, Token Type, Expression? Default)> Params, List<Statement> Body)> overloads,
-        IReadOnlyList<object?> argValues)
+    private object? InvokeInternalNamedFunction(InternalFunctionDelegate internalFunc, string name, Expression.NamedCall call)
     {
-        (List<(Token Name, Token Type, Expression? Default)> Params, List<Statement> Body)? bestMatch = null;
+        // get expected parameter names for this internal function
+        var (paramNames, paramNameSet) = GetInternalFunctionParamNamesCached(name);
+
+        // verify all supplied parameter names are valid
+        foreach (var arg in call.Args)
+        {
+            if (paramNameSet.Contains(arg.ParamName.Lexeme) == false)
+            {
+                throw new LangException($"Function '{name}' has no parameter named '{arg.ParamName.Lexeme}'", call.Name.Line, _filePath);
+            }
+        }
+
+        // verify all required parameters are supplied
+        if (call.Args.Count != paramNames.Length)
+        {
+            throw new LangException($"Function '{name}' expects {paramNames.Length} argument(s), but got {call.Args.Count}", call.Name.Line, _filePath);
+        }
+
+        // reorder arguments to match the expected parameter order; the Args of a
+        // NamedCall node are immutable, so the permutation can be cached on the node
+        int[]? order = call.ArgOrder;
+        if (order == null)
+        {
+            order = new int[paramNames.Length];
+            for (int i = 0; i < paramNames.Length; i++)
+            {
+                int argIndex = -1;
+                for (int j = 0; j < call.Args.Count; j++)
+                {
+                    if (call.Args[j].ParamName.Lexeme == paramNames[i])
+                    {
+                        argIndex = j;
+                        break;
+                    }
+                }
+
+                order[i] = argIndex;
+            }
+
+            call.ArgOrder = order;
+        }
+
+        var reorderedArgs = new List<Expression>(paramNames.Length);
+        for (int i = 0; i < paramNames.Length; i++)
+        {
+            reorderedArgs.Add(call.Args[order[i]].Value);
+        }
+
+        // create a regular Call expression with reordered arguments
+        var regularCall = new Expression.Call(new Expression.Variable(call.Name), reorderedArgs);
+        return internalFunc(regularCall);
+    }
+
+    private UserFunctionInfo? SelectBestOverload(UserFunctionInfo[] overloads, IReadOnlyList<object?> argValues)
+    {
+        UserFunctionInfo? bestMatch = null;
         int bestRequired = -1;
         int bestAnyCount = int.MaxValue;
 
         foreach (var overload in overloads)
         {
-            int required = 0;
-            int paramCount = overload.Params.Count;
-            if (argValues.Count < 0 || argValues.Count > paramCount)
+            if (argValues.Count > overload.ParamCount)
             {
                 continue;
             }
 
-            int providedArgCount = argValues.Count;
+            int required = 0;
             bool matches = true;
-            for (int i = 0; i < providedArgCount; i++)
+            for (int i = 0; i < argValues.Count; i++)
             {
-                var parameter = overload.Params[i];
-                if (parameter.Item3 == null)
+                if (overload.IsDefault[i] == false)
                 {
                     required++;
                 }
 
-                if (!IsValueOfType(argValues[i], parameter.Type.Lexeme))
+                if (overload.IsAny[i] == false && IsValueOfType(argValues[i], overload.TypeNames[i]) == false)
                 {
                     matches = false;
                     break;
                 }
             }
 
-            if (!matches)
+            if (matches == false || argValues.Count < required)
             {
                 continue;
             }
 
-            if (argValues.Count < required)
-            {
-                continue;
-            }
-
-            int anyCount = 0;
-            for (int i = 0; i < paramCount; i++)
-            {
-                if (overload.Params[i].Type.Lexeme == "any")
-                {
-                    anyCount++;
-                }
-            }
-
-            if (required > bestRequired || (required == bestRequired && anyCount < bestAnyCount))
+            if (required > bestRequired || (required == bestRequired && overload.AnyCount < bestAnyCount))
             {
                 bestMatch = overload;
                 bestRequired = required;
-                bestAnyCount = anyCount;
+                bestAnyCount = overload.AnyCount;
             }
         }
 
         return bestMatch;
     }
 
-    private (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? SelectBestNamedOverload(
-        IReadOnlyList<(List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)> overloads,
+    private UserFunctionInfo? SelectBestNamedOverload(
+        UserFunctionInfo[] overloads,
         IReadOnlyList<(Token ParamName, object? Value)> evaluatedArgs,
         HashSet<string> suppliedParamNames)
     {
-        (List<(Token Name, Token Type, JaskLang.Expression? Default)> Params, List<Statement> Body)? bestMatch = null;
+        UserFunctionInfo? bestMatch = null;
         int bestRequired = -1;
         int bestAnyCount = int.MaxValue;
 
         foreach (var overload in overloads)
         {
-            int required = 0;
-            int paramCount = overload.Params.Count;
-            if (evaluatedArgs.Count < 0 || evaluatedArgs.Count > paramCount)
+            int paramCount = overload.ParamCount;
+            if (evaluatedArgs.Count > paramCount)
             {
                 continue;
             }
 
-            bool hasValidNames = true;
-            var parameterNames = new HashSet<string>(paramCount);
+            if (overload.ParamNameSet.IsSupersetOf(suppliedParamNames) == false)
+            {
+                continue;
+            }
+
+            bool valid = true;
+            int required = 0;
+
             for (int i = 0; i < paramCount; i++)
             {
-                var parameter = overload.Params[i];
-                if (parameter.Item3 == null)
+                if (overload.IsDefault[i] == false)
                 {
                     required++;
                 }
-                parameterNames.Add(parameter.Name.Lexeme);
-            }
 
-            if (!parameterNames.IsSupersetOf(suppliedParamNames))
-            {
-                continue;
-            }
-
-            foreach (var parameter in overload.Params)
-            {
                 bool found = false;
-                foreach (var supplied in evaluatedArgs)
+                for (int j = 0; j < evaluatedArgs.Count; j++)
                 {
-                    if (supplied.ParamName.Lexeme == parameter.Name.Lexeme)
+                    if (evaluatedArgs[j].ParamName.Lexeme == overload.Params[i].Name.Lexeme)
                     {
                         found = true;
-                        if (!IsValueOfType(supplied.Value, parameter.Type.Lexeme))
+                        if (overload.IsAny[i] == false && IsValueOfType(evaluatedArgs[j].Value, overload.TypeNames[i]) == false)
                         {
-                            hasValidNames = false;
+                            valid = false;
                             break;
                         }
                         break;
                     }
                 }
 
-                if (!found)
+                if (found == false && overload.IsDefault[i] == false)
                 {
-                    if (parameter.Item3 == null)
-                    {
-                        hasValidNames = false;
-                        break;
-                    }
+                    valid = false;
+                    break;
                 }
             }
 
-            if (!hasValidNames || evaluatedArgs.Count < required)
+            if (valid == false || evaluatedArgs.Count < required)
             {
                 continue;
             }
 
-            int anyCount = 0;
-            for (int i = 0; i < paramCount; i++)
-            {
-                if (overload.Params[i].Type.Lexeme == "any")
-                {
-                    anyCount++;
-                }
-            }
-
-            if (required > bestRequired || (required == bestRequired && anyCount < bestAnyCount))
+            if (required > bestRequired || (required == bestRequired && overload.AnyCount < bestAnyCount))
             {
                 bestMatch = overload;
                 bestRequired = required;
-                bestAnyCount = anyCount;
+                bestAnyCount = overload.AnyCount;
             }
         }
 

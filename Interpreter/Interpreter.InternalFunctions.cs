@@ -102,6 +102,9 @@ public partial class Interpreter
             }
 
             _loadedInternalFunctionGroups.Add(modulePath);
+
+            // new internal functions could now match previously unresolved call sites
+            _resolutionGeneration++;
         }
     }
 
