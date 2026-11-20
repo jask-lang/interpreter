@@ -319,7 +319,10 @@ public class Parser(List<Token> tokens, string? filePath = null)
         Token? errorVar = null;
         if (Match(TokenType.Catch))
         {
-            if (Check(TokenType.Identifier))
+            // the identifier after 'catch' is the error variable only if it is
+            // not the start of a function call (not directly followed by '(');
+            // otherwise it belongs to the first statement of the catch body
+            if (Check(TokenType.Identifier) && CheckNext(TokenType.LParen) == false)
             {
                 errorVar = Advance();
             }
