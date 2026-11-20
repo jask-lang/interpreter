@@ -63,6 +63,22 @@ public class Parser(List<Token> tokens, string? filePath = null)
             name = Consume(TokenType.Identifier, "Expected a variable name after 'set global'");
             ValidateLowercase(name, "Variable");
 
+            if (Match(TokenType.Dot))
+            {
+                var fields = new List<Token>();
+                do
+                {
+                    Token field = Consume(TokenType.Identifier, "Expected a field name after '.'");
+                    fields.Add(field);
+                }
+                while (Match(TokenType.Dot));
+
+                Consume(TokenType.Assign, "Expected '=' after field name");
+                Expression fieldValue = Expression();
+
+                return new Statement.SetField(name, fields, fieldValue, true);
+            }
+
             Consume(TokenType.Assign, "Expected '=' after variable name");
             Expression value = Expression();
 
@@ -71,6 +87,22 @@ public class Parser(List<Token> tokens, string? filePath = null)
 
         name = Consume(TokenType.Identifier, "Expected a variable name after 'set'");
         ValidateLowercase(name, "Variable");
+
+        if (Match(TokenType.Dot))
+        {
+            var fields = new List<Token>();
+            do
+            {
+                Token field = Consume(TokenType.Identifier, "Expected a field name after '.'");
+                fields.Add(field);
+            }
+            while (Match(TokenType.Dot));
+
+            Consume(TokenType.Assign, "Expected '=' after field name");
+            Expression value = Expression();
+
+            return new Statement.SetField(name, fields, value, false);
+        }
 
         Consume(TokenType.Assign, "Expected '=' after variable name");
         Expression source = Expression();

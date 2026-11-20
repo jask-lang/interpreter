@@ -156,6 +156,64 @@ public partial class Interpreter
 
                 _globalEnvironment[key] = Evaluate(sg.Value);
                 break;
+
+            case Statement.SetField sf:
+                Dictionary<string, object?>? targetScope = null;
+                object? existingVal = null;
+
+                if (sf.IsGlobal)
+                {
+                    if (!_globalEnvironment.TryGetValue(sf.Variable.Lexeme, out existingVal))
+                    {
+                        throw new LangException($"Global variable '{sf.Variable.Lexeme}' is not defined", sf.Variable.Line, _filePath);
+                    }
+                    targetScope = _globalEnvironment;
+                }
+                else
+                {
+                    for (int i = _scopes.Count - 1; i >= 0; i--)
+                    {
+                        if (_scopes[i].TryGetValue(sf.Variable.Lexeme, out existingVal))
+                        {
+                            targetScope = _scopes[i];
+                            break;
+                        }
+                    }
+
+                    if (targetScope == null)
+                    {
+                        throw new LangException($"Unknown variable '{sf.Variable.Lexeme}'.", sf.Variable.Line, _filePath);
+                    }
+                }
+
+                if (existingVal is RestrictedValue)
+                {
+                    string prefix = sf.IsGlobal ? "Global variable" : "Variable";
+                    throw new LangException($"{prefix} '{sf.Variable.Lexeme}' is restricted and cannot be modified", sf.Variable.Line, _filePath);
+                }
+
+                if (existingVal is not StructInstance)
+                {
+                    throw new LangException($"Cannot set field '{sf.Fields[0].Lexeme}' on a non-struct value (got '{GetValueType(existingVal)}')", sf.Fields[0].Line, _filePath);
+                }
+
+                object? newFieldValue = Evaluate(sf.Value);
+
+                existingVal = targetScope[sf.Variable.Lexeme];
+                if (existingVal is RestrictedValue)
+                {
+                    string prefix = sf.IsGlobal ? "Global variable" : "Variable";
+                    throw new LangException($"{prefix} '{sf.Variable.Lexeme}' is restricted and cannot be modified", sf.Variable.Line, _filePath);
+                }
+
+                if (existingVal is not StructInstance currentStruct)
+                {
+                    throw new LangException($"Cannot set field '{sf.Fields[0].Lexeme}' on a non-struct value (got '{GetValueType(existingVal)}')", sf.Fields[0].Line, _filePath);
+                }
+
+                StructInstance updatedStruct = UpdateStructField(currentStruct, sf.Fields, 0, newFieldValue);
+                targetScope[sf.Variable.Lexeme] = updatedStruct;
+                break;
             
             case Statement.Restrict r:
                 var restrictedVariableName = r.Name.Lexeme;
@@ -539,6 +597,28 @@ public partial class Interpreter
             default:
                 throw new LangException($"Unknown statement: {statement}", 0, _filePath);
         }
+    }
+
+    private StructInstance UpdateStructField(StructInstance current, List<Token> fields, int index, object? newValue)
+    {
+        Token field = fields[index];
+        if (!current.Fields.TryGetValue(field.Lexeme, out var existingFieldValue))
+        {
+            throw new LangException($"Struct '{current.TypeName}' has no field '{field.Lexeme}'", field.Line, _filePath);
+        }
+
+        if (index == fields.Count - 1)
+        {
+            return current.WithField(field.Lexeme, newValue);
+        }
+
+        if (existingFieldValue is not StructInstance childStruct)
+        {
+            throw new LangException($"Cannot set field '{fields[index + 1].Lexeme}' on a non-struct value (got '{GetValueType(existingFieldValue)}')", fields[index + 1].Line, _filePath);
+        }
+
+        StructInstance updatedChild = UpdateStructField(childStruct, fields, index + 1, newValue);
+        return current.WithField(field.Lexeme, updatedChild);
     }
 
     /// <summary>
