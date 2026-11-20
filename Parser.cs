@@ -107,22 +107,6 @@ public class Parser(List<Token> tokens, string? filePath = null)
         Consume(TokenType.Assign, "Expected '=' after variable name");
         Expression source = Expression();
 
-        // check for struct update: set <target> = <source> update <field> = <value> [update ...]*
-        if (Check(TokenType.Update))
-        {
-            var updates = new List<(Token Field, Expression Value)>();
-
-            while (Match(TokenType.Update))
-            {
-                Token field = Consume(TokenType.Identifier, "Expected a field name after 'update'");
-                Consume(TokenType.Assign, "Expected '=' after field name in update");
-                Expression value = Expression();
-                updates.Add((field, value));
-            }
-
-            return new Statement.StructUpdate(source, updates, name);
-        }
-
         return new Statement.Set(name, source);
     }
 

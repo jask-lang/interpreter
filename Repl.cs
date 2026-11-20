@@ -22,7 +22,7 @@ static class Repl
         TokenType.Function, TokenType.EndFunction,
         TokenType.Use, TokenType.As,
         TokenType.Struct, TokenType.EndStruct,
-        TokenType.Update, TokenType.Return,
+        TokenType.Return,
         TokenType.Break, TokenType.Continue,
         TokenType.And, TokenType.Or, TokenType.Not, TokenType.Is,
         TokenType.Try, TokenType.Catch, TokenType.EndTry,

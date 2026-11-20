@@ -419,32 +419,6 @@ public partial class Interpreter
                 _resolutionGeneration++;
                 break;
 
-            case Statement.StructUpdate su:
-                object? sourceObj = Evaluate(su.Source);
-                if (sourceObj is not StructInstance sourceInstance)
-                {
-                    throw new LangException($"'update' expects a struct instance, but got '{GetValueType(sourceObj)}'", su.Target.Line, _filePath);
-                }
-
-                if (CurrentEnvironment.TryGetValue(su.Target.Lexeme, out var structObj) && structObj is RestrictedValue)
-                {
-                    throw new LangException($"Variable '{su.Target.Lexeme}' is restricted and cannot be modified", su.Target.Line, _filePath);
-                }
-
-                // fold each update over the instance, producing a new copy each time
-                StructInstance updated = sourceInstance;
-                foreach (var (field, valueExpr) in su.Updates)
-                {
-                    if (!updated.Fields.ContainsKey(field.Lexeme))
-                    {
-                        throw new LangException($"Struct '{updated.TypeName}' has no field '{field.Lexeme}'", field.Line, _filePath);
-                    }
-                    updated = updated.WithField(field.Lexeme, Evaluate(valueExpr));
-                }
-
-                CurrentEnvironment[su.Target.Lexeme] = updated;
-                break;
-
             case Statement.Expression e:
                 object? result = Evaluate(e.Value);
                 if (_isInteractiveMode && result != null)

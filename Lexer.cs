@@ -31,7 +31,6 @@ public class Lexer
         ["as"]          = TokenType.As,
         ["struct"]      = TokenType.Struct,
         ["endstruct"]   = TokenType.EndStruct,
-        ["update"]      = TokenType.Update,
         ["return"]      = TokenType.Return,
         ["break"]       = TokenType.Break,
         ["continue"]    = TokenType.Continue,

@@ -38,7 +38,6 @@ public enum TokenType
     // struct keywords
     Struct,
     EndStruct,
-    Update,
 
     // try-catch keywords
     Try,
