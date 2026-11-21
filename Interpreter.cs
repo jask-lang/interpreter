@@ -130,6 +130,18 @@ public partial class Interpreter
     {
         _scopes.Add(new Dictionary<string, object?>(StringComparer.Ordinal));
 
+        // snapshot the shared function/struct tables so that definitions made inside the interpreted
+        // code do not leak back into the caller's environment (interpret runs in a fresh local scope)
+        var functionKeysBefore = new HashSet<string>(_functions.Keys);
+        var structKeysBefore = new HashSet<string>(_structs.Keys);
+        var exportedFunctionsBefore = new HashSet<string>(_exportedFunctionNames);
+        var exportedStructsBefore = new HashSet<string>(_exportedStructNames);
+        var overloadCountsBefore = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var kvp in _functionOverloads)
+        {
+            overloadCountsBefore[kvp.Key] = kvp.Value.Count;
+        }
+
         try
         {
             var lexer = new Lexer(source, false, _filePath);
@@ -155,6 +167,43 @@ public partial class Interpreter
         finally
         {
             _scopes.RemoveAt(_scopes.Count - 1);
+
+            // revert any function/struct definitions created during interpretation
+            foreach (var key in _functions.Keys.Where(key => functionKeysBefore.Contains(key) == false).ToList())
+            {
+                _functions.Remove(key);
+            }
+
+            foreach (var key in _functionOverloads.Keys.ToList())
+            {
+                if (overloadCountsBefore.TryGetValue(key, out var count))
+                {
+                    var overloads = _functionOverloads[key];
+                    if (overloads.Count > count)
+                    {
+                        overloads.RemoveRange(count, overloads.Count - count);
+                    }
+                }
+                else
+                {
+                    _functionOverloads.Remove(key);
+                }
+            }
+
+            foreach (var key in _structs.Keys.Where(key => structKeysBefore.Contains(key) == false).ToList())
+            {
+                _structs.Remove(key);
+            }
+
+            foreach (var name in _exportedFunctionNames.Where(name => exportedFunctionsBefore.Contains(name) == false).ToList())
+            {
+                _exportedFunctionNames.Remove(name);
+            }
+
+            foreach (var name in _exportedStructNames.Where(name => exportedStructsBefore.Contains(name) == false).ToList())
+            {
+                _exportedStructNames.Remove(name);
+            }
         }
     }
 
