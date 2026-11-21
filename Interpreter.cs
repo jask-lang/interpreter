@@ -126,6 +126,38 @@ public partial class Interpreter
         }
     }
 
+    public object? InterpretSource(string source)
+    {
+        _scopes.Add(new Dictionary<string, object?>(StringComparer.Ordinal));
+
+        try
+        {
+            var lexer = new Lexer(source, false, _filePath);
+            var tokens = lexer.ScanTokens();
+            var parser = new Parser(tokens, _filePath);
+            var statements = parser.Parse();
+
+            object? lastResult = null;
+            foreach (var statement in statements)
+            {
+                if (statement is Statement.Expression expr)
+                {
+                    lastResult = Evaluate(expr.Value);
+                }
+                else
+                {
+                    Execute(statement);
+                }
+            }
+
+            return lastResult;
+        }
+        finally
+        {
+            _scopes.RemoveAt(_scopes.Count - 1);
+        }
+    }
+
     private void Execute(Statement statement)
     {
         switch (statement)

@@ -47,6 +47,9 @@ public partial class Interpreter
         RegisterInternalFunction("assert",   new List<(string, string)> { ("condition", "boolean") }, CallInternalFunctionAssert);
         RegisterInternalFunction("sleepFor", new List<(string, string)> { ("seconds", "number") },    CallInternalFunctionSleepFor);
 
+        // execution
+        RegisterInternalFunction("interpret", new List<(string, string)> { ("code", "string") }, CallInternalFunctionInterpret);
+
         // variable convertions
         RegisterInternalFunction("toNumber", new List<(string, string)> { ("value", "any") }, CallInternalFunctionToNumber);
         RegisterInternalFunction("toString", new List<(string, string)> { ("value", "any") }, CallInternalFunctionToString);
@@ -170,6 +173,19 @@ public partial class Interpreter
         object? value = Evaluate(call.Arguments[0]);
 
         return GetValueType(value);
+    }
+
+    private object? CallInternalFunctionInterpret(Expression.Call call)
+    {
+        CheckNumberOfArguments(call, 1, "interpret");
+
+        object? code = Evaluate(call.Arguments[0]);
+        if (code is not string source)
+        {
+            throw new LangException($"Function 'interpret' expects a string argument, but got '{GetValueType(code)}'", GetCallToken(call).Line, _filePath);
+        }
+
+        return InterpretSource(source);
     }
 
     private object? CallInternalFunctionRound(Expression.Call call)
