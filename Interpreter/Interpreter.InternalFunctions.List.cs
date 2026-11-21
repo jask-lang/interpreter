@@ -5,6 +5,7 @@ public partial class Interpreter
     private void initInternalFunctionsList()
     {
         RegisterInternalFunction("list",                                                                                                               CallInternalFunctionList);
+        RegisterInternalFunction("listFrom",        new List<(string, string)> { ("string", "string") },                                               CallInternalFunctionList);
         RegisterInternalFunction("listSize",        new List<(string, string)> { ("list", "list") },                                                   CallInternalFunctionListSize);
         RegisterInternalFunction("listAdd",         new List<(string, string)> { ("list", "list"), ("element", "any") },                               CallInternalFunctionListAdd);
         RegisterInternalFunction("listGet",         new List<(string, string)> { ("list", "list"), ("index", "number") },                              CallInternalFunctionListGet);
@@ -18,6 +19,22 @@ public partial class Interpreter
 
     private object? CallInternalFunctionList(Expression.Call call)
     {
+
+        if (call.Arguments.Count == 1)
+        {
+            object? listParam = Evaluate(call.Arguments[0]);
+
+            if (listParam is string str)
+            {
+                var listChar = new List<object?>(str.Length);
+                foreach (char c in str)
+                {
+                    listChar.Add(c.ToString());
+                }
+                return listChar;
+            }
+        }
+
         var list = new List<object?>();
 
         foreach (var arg in call.Arguments)
