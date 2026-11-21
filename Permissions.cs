@@ -10,7 +10,8 @@ public enum Permission : uint
     FileWrite = 1 << 3,
     Network   = 1 << 4,
     Trust     = 1 << 5,
-    All = Stdout | Stdin | FileRead | FileWrite | Network | Trust
+    Interpret = 1 << 6,
+    All = Stdout | Stdin | FileRead | FileWrite | Network | Trust | Interpret
 }
 
 public class ArgumentsParser
@@ -120,6 +121,10 @@ public class PermissionManager
         if (argumentParser.Has("--allow-trust") || argumentParser.Has("-at"))
         {
             Grant(Permission.Trust);
+        }
+        if (argumentParser.Has("--allow-interpret") || argumentParser.Has("-ae"))
+        {
+            Grant(Permission.Interpret);
         }
 
         // parse multiple flags for file read

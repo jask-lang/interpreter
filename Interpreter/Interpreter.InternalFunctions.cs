@@ -177,6 +177,11 @@ public partial class Interpreter
 
     private object? CallInternalFunctionInterpret(Expression.Call call)
     {
+        if (_permissionManager.IsPermitted(Permission.Interpret) == false)
+        {
+            throw new LangException($"Missing permission 'interpret' for function 'interpret'", GetCallToken(call).Line, _filePath);
+        }
+
         CheckNumberOfArguments(call, 1, "interpret");
 
         object? code = Evaluate(call.Arguments[0]);
