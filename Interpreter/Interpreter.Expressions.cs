@@ -487,6 +487,15 @@ public partial class Interpreter
                 }
             }
 
+            for (int i = argValues.Count; i < overload.ParamCount; i++)
+            {
+                if (overload.IsDefault[i] == false)
+                {
+                    matches = false;
+                    break;
+                }
+            }
+
             if (matches == false || argValues.Count < required)
             {
                 continue;
