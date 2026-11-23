@@ -3,6 +3,30 @@
 # exit immediately if a command exits with a non-zero status
 set -e
 
+# run from the directory that contains this script so the relative paths below resolve no matter where it is invoked from
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# installing with sudo would build bin/ and obj/ as root, leaving root-owned
+# artifacts that break later non-sudo builds
+if [ "$(id -u)" -eq 0 ]; then
+    echo "Error: do not run this script with sudo." >&2
+    echo "If a previous sudo run polluted the build tree, reclaim it first:" >&2
+    echo '  sudo chown -R "$(whoami):staff" bin obj' >&2
+    exit 1
+fi
+
+# publishing the interpreter requires the .NET SDK on the PATH
+if command -v dotnet >/dev/null 2>&1; then
+    :
+else
+    echo "Error: the 'dotnet' SDK was not found on your PATH." >&2
+    echo "Install it from https://dotnet.microsoft.com/download and retry." >&2
+    exit 1
+fi
+
+# clean up the temporary publish directory if the script is interrupted
+trap 'rm -rf ./dist' EXIT
+
 # detect OS
 OS_TYPE=$(uname -s)
 case "$OS_TYPE" in
@@ -88,4 +112,15 @@ else
 fi
 
 echo ""
-echo "Installation complete. The 'jask' executable is ready for use!"
+echo "Installation complete. The 'jask' executable is installed at:"
+echo "  ${INSTALL_DIR}/jask"
+echo ""
+if [ -n "$SHELL_RC" ]; then
+    echo "Start a new terminal (or run: source \"$SHELL_RC\") so 'jask' is on your PATH."
+fi
+if [ -x "${INSTALL_DIR}/jask" ]; then
+    echo "Verifying installed binary: $("${INSTALL_DIR}/jask" --version 2>&1)"
+else
+    echo "Warning: ${INSTALL_DIR}/jask is not present or not executable." >&2
+    exit 1
+fi
