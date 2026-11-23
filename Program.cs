@@ -8,15 +8,15 @@ static void printHelpMessage()
 
     Console.WriteLine("jask [arguments] --input \"file.jask\"" + Environment.NewLine);
     Console.WriteLine("Possible arguments:");
-    Console.WriteLine("--help           -h  : Prints this message and exits");
-    Console.WriteLine("--version        -v  : Prints the interpreters version and exits");
-    Console.WriteLine("--input          -i  : Specifies the path to a .jask file to interpret");
-    Console.WriteLine("--allow-stdout   -ao : Allows printing to stdout");
-    Console.WriteLine("--allow-stdin    -ai : Allows reading from stdin");
-    Console.WriteLine("--allow-trust    -at : Allows using trust()");
+    Console.WriteLine("--help            -h  : Prints this message and exits");
+    Console.WriteLine("--version         -v  : Prints the interpreters version and exits");
+    Console.WriteLine("--input           -i  : Specifies the path to a .jask file to interpret");
+    Console.WriteLine("--allow-stdout    -ao : Allows printing to stdout");
+    Console.WriteLine("--allow-stdin     -ai : Allows reading from stdin");
+    Console.WriteLine("--allow-trust     -at : Allows using trust()");
     Console.WriteLine("--allow-interpret -ae : Allows using interpret() to run dynamically-constructed jask code");
-    Console.WriteLine("--allow-read     -ar : Allows reading files. Can be specified multiple times for different paths or files");
-    Console.WriteLine("--allow-write    -aw : Allows writing files. Can be specified multiple times for different paths or files");
+    Console.WriteLine("--allow-read      -ar : Allows reading files. Can be specified multiple times for different paths or files");
+    Console.WriteLine("--allow-write     -aw : Allows writing files. Can be specified multiple times for different paths or files");
 }
 
 ArgumentsParser argumentParser = new ArgumentsParser(args);
